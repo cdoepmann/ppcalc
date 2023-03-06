@@ -28,6 +28,7 @@ pub struct PreNetworkTraceEntry {
 
 #[derive(Serialize, Deserialize)]
 pub struct TraceEntry {
+    pub m_id: u64,
     pub source_name: String,
     pub source_timestamp: PrimitiveDateTime,
     pub destination_name: String,

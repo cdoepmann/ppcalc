@@ -10,11 +10,13 @@ pub fn generate_network_delay(
     pre_network_trace: Vec<trace::PreNetworkTraceEntry>,
 ) -> trace::Trace {
     let mut trace = vec![];
+    let mut m_id = 0;
     let distr = Uniform::from(min_delay..max_delay);
     let mut rng = rand::thread_rng();
     let delay = distr.sample(&mut rng);
     for entry in pre_network_trace {
         trace.push(trace::TraceEntry {
+            m_id: m_id,
             source_name: entry.source_name,
             source_timestamp: entry.source_timestamp,
             destination_name: entry.destination_name,
@@ -22,7 +24,8 @@ pub fn generate_network_delay(
                 .source_timestamp
                 .checked_add(time::Duration::from(time::Duration::milliseconds(delay)))
                 .unwrap(),
-        })
+        });
+        m_id += 1;
     }
     trace::Trace { entries: trace }
 }
