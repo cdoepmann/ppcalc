@@ -1,6 +1,6 @@
 use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, hash::Hash, vec};
+use std::{collections::HashMap, vec};
 use time::PrimitiveDateTime;
 
 #[derive(Serialize, Deserialize)]
