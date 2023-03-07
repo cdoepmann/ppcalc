@@ -1,3 +1,4 @@
+mod analytics;
 mod destination;
 mod network;
 mod source;
@@ -40,5 +41,13 @@ fn main() {
     network_trace
         .write_to_file("./sim/network_trace.csv")
         .unwrap();
-    let network_trace = trace::read_network_trace_from_file("./sim/network_trace.csv");
+    let network_trace = trace::read_network_trace_from_file("./sim/network_trace.csv").unwrap();
+    let anonymity_sets = analytics::compute_anonymity_sets(network_trace, 1, 100).unwrap();
+    for (k, v) in anonymity_sets.iter() {
+        print!("{}: ", k);
+        for id in v {
+            print!("{} ", id);
+        }
+        println!("");
+    }
 }

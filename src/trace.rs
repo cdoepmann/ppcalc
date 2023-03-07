@@ -95,7 +95,7 @@ pub fn read_network_trace_from_file(path: &str) -> Result<Trace, Box<dyn std::er
 }
 impl Trace {
     pub fn write_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut wtr = WriterBuilder::new().has_headers(false).from_path(path)?;
+        let mut wtr = WriterBuilder::new().from_path(path)?;
         for entry in self.entries.iter() {
             wtr.serialize(entry)?;
         }
