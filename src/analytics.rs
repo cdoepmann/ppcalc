@@ -1,4 +1,10 @@
-use std::{collections::HashMap, fmt::Display, ops::Add, vec};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt::Display,
+    hash::Hash,
+    ops::Add,
+    vec,
+};
 
 use time::PrimitiveDateTime;
 
@@ -35,7 +41,7 @@ impl Display for ProcessingEvent {
         )
     }
 }
-pub fn compute_anonymity_sets(
+pub fn compute_message_anonymity_sets(
     trace: trace::Trace,
     min_delay: i64,
     max_delay: i64,
@@ -69,6 +75,28 @@ pub fn compute_anonymity_sets(
     }
     Ok(anonymity_sets)
 }
+
+fn compute_destination_mapping(trace: trace::Trace) -> HashMap<u64, String> {
+    let mut destination_mapping = HashMap::new();
+    for entry in trace.entries {
+        destination_mapping.insert(entry.m_id, entry.destination_name);
+    }
+    destination_mapping
+}
+
+fn compute_source_message_mapping(trace: trace::Trace) -> HashMap<String, Vec<u64>> {
+    let mut source_message_mapping = HashMap::new();
+    for trace_entry in trace.entries {
+        match source_message_mapping.entry(trace_entry.source_name) {
+            Entry::Vacant(e) => {
+                e.insert(vec![trace_entry.m_id]);
+            }
+            Entry::Occupied(mut e) => e.get_mut().push(trace_entry.m_id),
+        }
+    }
+    source_message_mapping
+}
+
 fn compute_event_queue(
     trace: trace::Trace,
     min_delay: i64,
