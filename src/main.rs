@@ -42,12 +42,22 @@ fn main() {
         .write_to_file("./sim/network_trace.csv")
         .unwrap();
     let network_trace = trace::read_network_trace_from_file("./sim/network_trace.csv").unwrap();
-    let anonymity_sets = analytics::compute_message_anonymity_sets(network_trace, 1, 100).unwrap();
+    let anonymity_sets = analytics::compute_message_anonymity_sets(&network_trace, 1, 100).unwrap();
+    let relationship_anonymity_sets =
+        analytics::compute_relationship_anonymity(&network_trace, 1, 100).unwrap();
+
     for (k, v) in anonymity_sets.iter() {
         print!("{}: ", k);
         for id in v {
             print!("{} ", id);
         }
         println!("");
+    }
+
+    for (source, iterative_anonymity_sets) in relationship_anonymity_sets.iter() {
+        println!("{}", source);
+        for (m_id, potential_receivers) in iterative_anonymity_sets {
+            println!("{} -> {:?}", m_id, potential_receivers);
+        }
     }
 }
