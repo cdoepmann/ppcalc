@@ -42,11 +42,19 @@ fn main() {
         .write_to_file("./sim/network_trace.csv")
         .unwrap();
     let network_trace = trace::read_network_trace_from_file("./sim/network_trace.csv").unwrap();
-    let anonymity_sets = analytics::compute_message_anonymity_sets(&network_trace, 1, 100).unwrap();
-    let relationship_anonymity_sets =
+    let (source_anonymity_sets, destination_anonymity_sets) =
+        analytics::compute_message_anonymity_sets(&network_trace, 1, 100).unwrap();
+    let (source_relationship_anonymity_sets, destination_relationship_anonymity_sets) =
         analytics::compute_relationship_anonymity(&network_trace, 1, 100).unwrap();
 
-    for (k, v) in anonymity_sets.iter() {
+    for (k, v) in source_anonymity_sets.iter() {
+        print!("{}: ", k);
+        for id in v {
+            print!("{} ", id);
+        }
+        println!("");
+    }
+    for (k, v) in destination_anonymity_sets.iter() {
         print!("{}: ", k);
         for id in v {
             print!("{} ", id);
@@ -54,10 +62,16 @@ fn main() {
         println!("");
     }
 
-    for (source, iterative_anonymity_sets) in relationship_anonymity_sets.iter() {
+    for (source, iterative_anonymity_sets) in source_relationship_anonymity_sets.iter() {
         println!("{}", source);
-        for (m_id, potential_receivers) in iterative_anonymity_sets {
-            println!("{} -> {:?}", m_id, potential_receivers);
+        for (m_id, potential_destinations) in iterative_anonymity_sets {
+            println!("{} -> {:?}", m_id, potential_destinations);
+        }
+    }
+    for (destination, iterative_anonymity_sets) in destination_relationship_anonymity_sets.iter() {
+        println!("{}", destination);
+        for (m_id, potential_source) in iterative_anonymity_sets {
+            println!("{} -> {:?}", m_id, potential_source);
         }
     }
 }
