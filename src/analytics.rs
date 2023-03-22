@@ -88,22 +88,6 @@ pub fn compute_message_anonymity_sets(
     ))
 }
 
-fn compute_destination_mapping(trace: &trace::Trace) -> HashMap<u64, String> {
-    let mut destination_mapping = HashMap::new();
-    for entry in trace.entries.iter() {
-        destination_mapping.insert(entry.m_id, entry.destination_name.clone());
-    }
-    destination_mapping
-}
-
-fn compute_source_mapping(trace: &trace::Trace) -> HashMap<u64, String> {
-    let mut source_mapping = HashMap::new();
-    for entry in trace.entries.iter() {
-        source_mapping.insert(entry.m_id, entry.source_name.clone());
-    }
-    source_mapping
-}
-
 fn compute_source_and_destination_mapping(
     trace: &trace::Trace,
 ) -> (HashMap<u64, String>, HashMap<u64, String>) {
@@ -280,8 +264,6 @@ fn compute_event_queue(
 
 #[cfg(test)]
 mod tests {
-    use std::hash::Hash;
-
     use crate::analytics::*;
     #[test]
     fn simple_example_validation() {
@@ -360,7 +342,7 @@ mod tests {
         source_relationship_anonymity_sets_s1.push((12, vec![d1_s.clone()]));
         source_relationship_anonymity_sets_s1.push((14, vec![d1_s.clone()]));
 
-        let mut sras_s1 = source_relationship_anonymity_sets
+        let sras_s1 = source_relationship_anonymity_sets
             .get("s1")
             .unwrap()
             .clone();
@@ -399,7 +381,7 @@ mod tests {
         source_relationship_anonymity_sets_s2.push((13, vec![d1_s.clone(), d2_s.clone()]));
         source_relationship_anonymity_sets_s2.push((15, vec![d2_s.clone()]));
 
-        let mut sras_s2 = source_relationship_anonymity_sets
+        let sras_s2 = source_relationship_anonymity_sets
             .get("s2")
             .unwrap()
             .clone();
@@ -440,7 +422,7 @@ mod tests {
         destination_relationship_anonymity_sets_d1.push((12, vec![s1_s.clone()]));
         destination_relationship_anonymity_sets_d1.push((14, vec![s1_s.clone()]));
 
-        let mut dras_d1 = destination_relationship_anonymity_sets
+        let dras_d1 = destination_relationship_anonymity_sets
             .get("d1")
             .unwrap()
             .clone();
@@ -479,7 +461,7 @@ mod tests {
         destination_relationship_anonymity_sets_d2.push((13, vec![s1_s.clone(), s2_s.clone()]));
         destination_relationship_anonymity_sets_d2.push((15, vec![s1_s.clone(), s2_s.clone()]));
 
-        let mut dras_d2 = destination_relationship_anonymity_sets
+        let dras_d2 = destination_relationship_anonymity_sets
             .get("d2")
             .unwrap()
             .clone();
