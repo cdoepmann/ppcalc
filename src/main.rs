@@ -6,7 +6,7 @@ mod trace;
 use std::fs;
 
 fn main() {
-    let mut traces: Vec<trace::SourceTrace> = vec![];
+    /*let mut traces: Vec<trace::SourceTrace> = vec![];
     let mut source = source::Source::new(13, 5, 50);
     traces.push(source.gen_source_trace(String::from("Alice")));
     traces.push(source.gen_source_trace(String::from("Bob")));
@@ -41,6 +41,7 @@ fn main() {
     network_trace
         .write_to_file("./sim/network_trace.csv")
         .unwrap();
+    */
     let network_trace = trace::read_network_trace_from_file("./sim/network_trace.csv").unwrap();
     let (source_anonymity_sets, destination_anonymity_sets) =
         analytics::compute_message_anonymity_sets(&network_trace, 1, 100).unwrap();
