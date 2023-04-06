@@ -3,10 +3,11 @@ mod destination;
 mod network;
 mod source;
 mod trace;
+use statrs::distribution::Normal;
 use std::fs;
 fn main() {
     let mut traces: Vec<trace::SourceTrace> = vec![];
-    let mut source = source::Source::new(13, 5, 50);
+    let mut source = source::Source::new(13, Normal::new(10.0, 3.0).unwrap());
     traces.push(source.gen_source_trace(String::from("Alice")));
     traces.push(source.gen_source_trace(String::from("Bob")));
 

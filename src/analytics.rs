@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::hash::Hash;
 use std::{
     collections::{hash_map::Entry, HashMap},
     fmt::Display,
@@ -8,7 +9,7 @@ use std::{
 
 use time::PrimitiveDateTime;
 
-use crate::trace;
+use crate::{destination, source, trace};
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 enum EventType {
@@ -148,6 +149,7 @@ pub fn compute_relationship_anonymity(
         destination_mapping,
         source_message_anonymity_sets,
     )?;
+    /* Be wary that this yields only useful results if there is just one source per destination */
     let destination_relationship_anonymity_sets = compute_relation_ship_anonymity_sets(
         destination_message_mapping,
         source_mapping,

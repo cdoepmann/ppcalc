@@ -1,20 +1,20 @@
 use crate::trace;
-use rand::distributions::{Distribution, Uniform};
+use num_traits::cast::ToPrimitive;
 use rand::prelude::*;
 use time::macros::datetime;
 use time::Duration;
 
-pub struct Source {
+pub struct Source<T: Distribution<f64>> {
     number_of_messages: u64,
     rng: ThreadRng,
-    distr: Uniform<i64>,
+    distr: T,
 }
 
-impl Source {
-    pub fn new(number_of_messages: u64, min: i64, max: i64) -> Source {
+impl<T: Distribution<f64>> Source<T> {
+    pub fn new(number_of_messages: u64, distr: T) -> Source<T> {
         Source {
             number_of_messages,
-            distr: Uniform::from(min..max),
+            distr: distr,
             rng: rand::thread_rng(),
         }
     }
@@ -23,7 +23,7 @@ impl Source {
         let mut time = datetime!(1970-01-01 0:00);
         for _ in 0..self.number_of_messages {
             let offset: time::Duration =
-                time::Duration::milliseconds(self.distr.sample(&mut self.rng));
+                time::Duration::milliseconds(self.distr.sample(&mut self.rng).to_i64().unwrap());
             time = time.checked_add(Duration::from(offset)).unwrap();
             timestamps.push(time);
         }
