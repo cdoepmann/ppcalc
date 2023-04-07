@@ -181,16 +181,10 @@ pub fn compute_relation_ship_anonymity_sets(
                     .ok_or("Name not found")?;
                 // Check if Destination is already in current set
                 if current_relationship_anonymity_set.contains(name_b) {
-                    println!(
-                        "Current relationship anonymity set already contains this name: {}",
-                        name_b
-                    );
-                    println!("{:?}", current_relationship_anonymity_set);
                     continue;
                 }
                 // Check if this message has already been "used" in a previous round
                 if !selected_messages.contains(message_b) {
-                    println!("Added unselected message");
                     selected_messages.push(*message_b);
                     current_relationship_anonymity_set.push(name_b.clone());
                 }
@@ -229,6 +223,44 @@ pub fn compute_relation_ship_anonymity_sets(
     }
     Ok(relationship_anonymity_sets)
 }
+
+/*
+fn compute_relationship_anonymity_intersection(
+    source_relationship_anonymity_sets: HashMap<String, Vec<(u64, Vec<String>)>>,
+    destination_relationship_anonymity_sets: HashMap<String, Vec<(u64, Vec<String>)>>,
+) -> HashMap<String, Vec<(u64, Vec<String>)>> {
+    let mut relationship_anonymity_sets: HashMap<u64, Vec<String>> = HashMap::new();
+    let mut source_message_map: HashMap<String, Vec<u64>> = HashMap::new();
+    let mut source_message_anonymity_sets: HashMap<u64, Vec<String>> = HashMap::new();
+    let mut destination_message_map: HashMap<String, Vec<u64>> = HashMap::new();
+    let mut destination_message_anonymity_sets: HashMap<u64, Vec<String>> = HashMap::new();
+
+    for (source, mas) in source_relationship_anonymity_sets.into_iter() {
+        let mut message_list: Vec<u64> = vec![];
+        for (id, destinations) in mas.into_iter() {
+            message_list.push(id);
+            source_message_anonymity_sets.insert(id, destinations);
+        }
+        source_message_map.insert(source.to_string(), message_list);
+    }
+
+    for (destination, mas) in destination_relationship_anonymity_sets.into_iter() {
+        let mut message_list: Vec<u64> = vec![];
+        for (id, sources) in mas.into_iter() {
+            message_list.push(id);
+            destination_message_anonymity_sets.insert(id, sources);
+        }
+        destination_message_map.insert(destination.to_string(), message_list);
+    }
+
+    for (id, sources) in destination_message_anonymity_sets.iter() {
+        if let Some(destinations) = source_message_anonymity_sets.get(id) {
+            for source in sources
+        }
+    }
+    relationship_anonymity_sets
+}
+*/
 fn compute_event_queue(
     trace: &trace::Trace,
     min_delay: i64,
@@ -258,9 +290,6 @@ fn compute_event_queue(
         });
     }
     event_queue.sort();
-    for event in event_queue.iter() {
-        println!("{}", event);
-    }
     Ok(event_queue)
 }
 

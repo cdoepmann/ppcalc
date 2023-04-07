@@ -1,15 +1,23 @@
 mod analytics;
 mod destination;
 mod network;
+mod plot;
 mod source;
 mod trace;
 use statrs::distribution::Normal;
 use std::fs;
 fn main() {
     let mut traces: Vec<trace::SourceTrace> = vec![];
-    let mut source = source::Source::new(13, Normal::new(10.0, 3.0).unwrap());
-    traces.push(source.gen_source_trace(String::from("Alice")));
-    traces.push(source.gen_source_trace(String::from("Bob")));
+    let mut sources: Vec<source::Source<Normal>> = vec![];
+
+    for i in 1..1001 {
+        let mut source = source::Source::new(
+            25,
+            Normal::new(10.0, 50.0).unwrap(),
+            Normal::new(0.0, 10000.0).unwrap(),
+        );
+        traces.push(source.gen_source_trace(String::from("s") + &i.to_string()));
+    }
 
     let trace_dir = "./sim/traces/";
     fs::create_dir_all(trace_dir).unwrap();
@@ -28,7 +36,7 @@ fn main() {
     }
     let source_destination_map_path = "./sim/source_destination_map";
     let source_name_list = traces.iter().map(|x| x.source_name.clone()).collect();
-    let source_destination_map = destination::uniform_destination_selection(2, source_name_list);
+    let source_destination_map = destination::uniform_destination_selection(100, source_name_list);
     trace::write_source_destination_map(source_destination_map, source_destination_map_path)
         .unwrap();
 
@@ -47,13 +55,14 @@ fn main() {
     let (source_relationship_anonymity_sets, destination_relationship_anonymity_sets) =
         analytics::compute_relationship_anonymity(&network_trace, 1, 100).unwrap();
 
-    for (k, v) in source_anonymity_sets.iter() {
+    /*for (k, v) in source_anonymity_sets.iter() {
         print!("{}: ", k);
         for id in v {
             print!("{} ", id);
         }
         println!("");
-    }
+    }*/
+    /*
     for (k, v) in destination_anonymity_sets.iter() {
         print!("{}: ", k);
         for id in v {
@@ -61,17 +70,24 @@ fn main() {
         }
         println!("");
     }
+    */
+    let plot = plot::PlotFormat::new(source_relationship_anonymity_sets);
 
-    for (source, iterative_anonymity_sets) in source_relationship_anonymity_sets.iter() {
-        println!("{}", source);
-        for (m_id, potential_destinations) in iterative_anonymity_sets {
-            println!("{} -> {:?}", m_id, potential_destinations);
+    /* for (source, iterative_anonymity_sets) in source_relationship_anonymity_sets.iter() {
+            println!("{}", source);
+            for (m_id, potential_destinations) in iterative_anonymity_sets {
+                println!("{} -> {:?}", m_id, potential_destinations);
+            }
         }
-    }
+    */
+    plot.deanonymized_users_over_time();
+    plot.anonymity_set_size_over_time();
+    /*
     for (destination, iterative_anonymity_sets) in destination_relationship_anonymity_sets.iter() {
         println!("{}", destination);
         for (m_id, potential_source) in iterative_anonymity_sets {
             println!("{} -> {:?}", m_id, potential_source);
         }
     }
+    */
 }
