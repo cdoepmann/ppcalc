@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::hash::Hash;
 use std::{
     collections::{hash_map::Entry, HashMap},
     fmt::Display,
@@ -60,8 +59,8 @@ pub fn compute_message_anonymity_sets(
 ) -> Result<(HashMap<u64, Vec<u64>>, HashMap<u64, Vec<u64>>), Box<dyn std::error::Error>> {
     let event_queue = compute_event_queue(trace, min_delay, max_delay)?;
     let mut current_source_message_set: Vec<u64> = vec![];
-    let mut source_message_anonymity_sets: HashMap<u64, Vec<u64>> = HashMap::new();
-    let mut destination_message_anonymity_sets: HashMap<u64, Vec<u64>> = HashMap::new();
+    let mut message_receiver_anonymity_sets: HashMap<u64, Vec<u64>> = HashMap::new();
+    let mut message_sender_anonymity_sets: HashMap<u64, Vec<u64>> = HashMap::new();
 
     for event in event_queue {
         match event.event_type {
@@ -71,21 +70,21 @@ pub fn compute_message_anonymity_sets(
             }
             EventType::AddDestinationMessage => {
                 for m_id in current_source_message_set.iter() {
-                    match source_message_anonymity_sets.get_mut(&m_id) {
+                    match message_receiver_anonymity_sets.get_mut(&m_id) {
                         Some(set) => set.push(event.m_id),
                         None => {
-                            source_message_anonymity_sets.insert(*m_id, vec![event.m_id]);
+                            message_receiver_anonymity_sets.insert(*m_id, vec![event.m_id]);
                         }
                     };
                 }
-                destination_message_anonymity_sets
+                message_sender_anonymity_sets
                     .insert(event.m_id, current_source_message_set.clone());
             }
         };
     }
     Ok((
-        source_message_anonymity_sets,
-        destination_message_anonymity_sets,
+        message_receiver_anonymity_sets,
+        message_sender_anonymity_sets,
     ))
 }
 

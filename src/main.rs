@@ -4,17 +4,20 @@ mod network;
 mod plot;
 mod source;
 mod trace;
+use rand_distr::Distribution;
 use statrs::distribution::Normal;
 use std::fs;
+
 fn main() {
     let mut traces: Vec<trace::SourceTrace> = vec![];
     let mut sources: Vec<source::Source<Normal>> = vec![];
-
+    let message_distr = Normal::new(100.0, 10.0).unwrap();
+    let mut rng = rand::thread_rng();
     for i in 1..1001 {
         let mut source = source::Source::new(
-            25,
+            message_distr.sample(&mut rng).ceil() as u64,
             Normal::new(10.0, 50.0).unwrap(),
-            Normal::new(0.0, 10000.0).unwrap(),
+            Normal::new(5000.0, 1000.0).unwrap(),
         );
         traces.push(source.gen_source_trace(String::from("s") + &i.to_string()));
     }
@@ -80,8 +83,16 @@ fn main() {
             }
         }
     */
-    plot.deanonymized_users_over_time();
-    plot.anonymity_set_size_over_time();
+    let plot_path = String::from("sim/plot.json");
+    plot.write_plot(plot_path);
+    let deanomization_vec = plot.deanonymized_users_over_time();
+    let map = plot.anonymity_set_size_over_time();
+    std::fs::write("sim/map.json", serde_json::to_string_pretty(&map).unwrap()).unwrap();
+    std::fs::write(
+        "sim/deanomization.json",
+        serde_json::to_string_pretty(&deanomization_vec).unwrap(),
+    )
+    .unwrap();
     /*
     for (destination, iterative_anonymity_sets) in destination_relationship_anonymity_sets.iter() {
         println!("{}", destination);
