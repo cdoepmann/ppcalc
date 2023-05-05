@@ -82,19 +82,32 @@ impl PlotFormat {
 
     pub fn anonymity_set_size_over_time(self: &Self) -> BTreeMap<u64, usize> {
         let mut anonymity_set_difference_map: BTreeMap<u64, usize> = BTreeMap::new();
+        let mut total_anonymity_set_size = self
+            .source_message_map
+            .iter()
+            .map(|(_source, messages)| {
+                self.source_message_anonymity_sets
+                    .get(messages.first().unwrap())
+                    .unwrap()
+                    .len()
+            })
+            .reduce(|first_message, sum| first_message + sum)
+            .unwrap();
+        println!("TOtal anonymity set size: {total_anonymity_set_size}");
+
         for (source, messages) in self.source_message_map.iter() {
-            let mut anonymity_set_size = self.source_message_anonymity_sets.len();
-            for message_id in messages {
-                let anonymity_set = self.source_message_anonymity_sets.get(message_id).unwrap();
-                let diff = anonymity_set_size - anonymity_set.len();
-                anonymity_set_difference_map.insert(*message_id, diff);
-                anonymity_set_size = anonymity_set.len();
-            }
+            messages
+                .iter()
+                .map(|m| (*m, self.source_message_anonymity_sets.get(m).unwrap().len()))
+                .collect::<Vec<(u64, usize)>>()
+                .windows(2)
+                .map(|a| (a[0].0, a[0].1 - a[1].1))
+                .for_each(|(id, diff)| {
+                    anonymity_set_difference_map.insert(id, diff);
+                });
+            println!("Processed source: {source}");
         }
         let mut anonymity_set_size_map: BTreeMap<u64, usize> = BTreeMap::new();
-        let mut total_anonymity_set_size =
-            self.source_message_anonymity_sets.len() * self.source_message_anonymity_sets.len();
-
         for (id, difference) in anonymity_set_difference_map {
             total_anonymity_set_size -= difference;
             anonymity_set_size_map.insert(id, total_anonymity_set_size);

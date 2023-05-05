@@ -83,13 +83,17 @@ fn main() {
             }
         }
     */
-    let plot_path = String::from("sim/plot.json");
+    let plot_path = String::from("playbook/plot.json");
     plot.write_plot(plot_path);
     let deanomization_vec = plot.deanonymized_users_over_time();
     let map = plot.anonymity_set_size_over_time();
-    std::fs::write("sim/map.json", serde_json::to_string_pretty(&map).unwrap()).unwrap();
     std::fs::write(
-        "sim/deanomization.json",
+        "playbook/map.json",
+        serde_json::to_string_pretty(&map).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        "playbook/deanomization.json",
         serde_json::to_string_pretty(&deanomization_vec).unwrap(),
     )
     .unwrap();
