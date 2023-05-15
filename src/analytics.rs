@@ -8,7 +8,7 @@ use std::{
 
 use time::PrimitiveDateTime;
 
-use crate::{destination, source, trace};
+use crate::trace;
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 enum EventType {

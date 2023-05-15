@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use rand::{distributions::Uniform, prelude::Distribution};
-use rand_distr::uniform::UniformFloat;
 use statrs::distribution::Normal;
 
 pub enum DestinationSelectionType {

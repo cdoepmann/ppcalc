@@ -1,15 +1,19 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
+use crate::destination;
+
 #[derive(Serialize, Deserialize)]
 pub struct PlotFormat {
     pub source_message_anonymity_sets: HashMap<u64, Vec<String>>,
     pub source_message_map: HashMap<String, Vec<u64>>,
+    pub source_destination_map: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct DeanomizationEntry {
     source: String,
+    destination: String,
     remaining_anonymity_set: u64,
     messages: u64,
     deanomized_at: Option<u64>,
@@ -17,6 +21,7 @@ pub struct DeanomizationEntry {
 impl PlotFormat {
     pub fn new(
         source_relationship_anonymity_sets: HashMap<String, Vec<(u64, Vec<String>)>>,
+        source_destination_map: HashMap<String, String>,
     ) -> Self {
         let mut source_message_map: HashMap<String, Vec<u64>> = HashMap::new();
         let mut source_message_anonymity_sets: HashMap<u64, Vec<String>> = HashMap::new();
@@ -32,13 +37,13 @@ impl PlotFormat {
         PlotFormat {
             source_message_anonymity_sets,
             source_message_map,
+            source_destination_map,
         }
     }
 
     pub fn deanonymized_users_over_time(self: &Self) -> Vec<DeanomizationEntry> {
         let mut deanonymization_vec: Vec<DeanomizationEntry> = vec![];
         for (source, messages) in self.source_message_map.iter() {
-            let mut message_number = 1;
             let mut anonymity_set;
             let num_messages = messages.len();
             let last_message = messages.last();
@@ -51,8 +56,10 @@ impl PlotFormat {
                 .source_message_anonymity_sets
                 .get(&last_message)
                 .unwrap();
+            let destination = self.source_destination_map.get(source).unwrap();
             if anonymity_set.len() != 1 {
                 deanonymization_vec.push(DeanomizationEntry {
+                    destination: destination.clone(),
                     source: source.clone(),
                     remaining_anonymity_set: anonymity_set.len() as u64,
                     messages: messages.len() as u64,
@@ -67,8 +74,10 @@ impl PlotFormat {
                     }
                     message_number -= 1;
                 }
+                let destination = self.source_destination_map.get(source).unwrap();
                 deanonymization_vec.push(DeanomizationEntry {
                     source: source.clone(),
+                    destination: destination.clone(),
                     remaining_anonymity_set: 1,
                     messages: messages.len() as u64,
                     deanomized_at: Some(message_number),

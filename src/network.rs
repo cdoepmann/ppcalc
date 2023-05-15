@@ -33,7 +33,7 @@ pub fn generate_network_delay(
 /* Todo we have sorted vectors of timestamps, this should be doable in something like timestamps * log(sources) */
 pub fn merge_traces(
     source_traces: Vec<trace::SourceTrace>,
-    source_destination_map: HashMap<String, String>,
+    source_destination_map: &HashMap<String, String>,
 ) -> Vec<trace::PreNetworkTraceEntry> {
     let mut pre_network_trace = vec![];
     for trace in source_traces {
