@@ -58,22 +58,6 @@ fn main() {
     let (source_relationship_anonymity_sets, destination_relationship_anonymity_sets) =
         analytics::compute_relationship_anonymity(&network_trace, 1, 100).unwrap();
 
-    /*for (k, v) in source_anonymity_sets.iter() {
-        print!("{}: ", k);
-        for id in v {
-            print!("{} ", id);
-        }
-        println!("");
-    }*/
-    /*
-    for (k, v) in destination_anonymity_sets.iter() {
-        print!("{}: ", k);
-        for id in v {
-            print!("{} ", id);
-        }
-        println!("");
-    }
-    */
     let plot = plot::PlotFormat::new(source_relationship_anonymity_sets);
 
     /* for (source, iterative_anonymity_sets) in source_relationship_anonymity_sets.iter() {
