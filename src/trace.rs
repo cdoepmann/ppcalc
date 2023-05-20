@@ -1,6 +1,6 @@
 use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, vec};
+use std::{collections::HashMap, fs::File, io::BufReader, path, vec};
 use time::PrimitiveDateTime;
 
 #[derive(Serialize, Deserialize)]
@@ -42,20 +42,28 @@ impl SourceTrace {
         Ok(())
     }
 }
-pub fn read_source_trace_from_file(path: &str) -> Result<SourceTrace, Box<dyn std::error::Error>> {
-    let mut rdr = ReaderBuilder::new().has_headers(false).from_path(path)?;
-    let mut iter = rdr.deserialize();
+pub fn write_sources(
+    path: &str,
+    traces: &Vec<SourceTrace>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let wtr = std::fs::File::create(path)?;
 
-    if let Some(result) = iter.next() {
-        let source_trace: SourceTrace = result?;
-        Ok(source_trace)
-    } else {
-        Err(From::from("expected at least one record but got none"))
-    }
+    serde_json::to_writer(&wtr, traces)?;
+    Ok(())
+}
+pub fn read_source_trace_from_file(
+    path: &str,
+) -> Result<Vec<SourceTrace>, Box<dyn std::error::Error>> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+
+    // Read the JSON contents of the file as an instance of `User`.
+    let source_trace = serde_json::from_reader(reader)?;
+    Ok(source_trace)
 }
 
 pub fn write_source_destination_map(
-    map: HashMap<String, String>,
+    map: &HashMap<String, String>,
     path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut wtr = WriterBuilder::new().from_path(path)?;

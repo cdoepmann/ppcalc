@@ -4,49 +4,86 @@ mod network;
 mod plot;
 mod source;
 mod trace;
+use core::num;
+use csv::WriterBuilder;
 use rand_distr::Distribution;
 use statrs::distribution::Normal;
-use std::fs;
-
+use std::{env, fs};
+use trace::write_sources;
+fn help() {
+    println!("Help is currently not available. Please panic");
+}
 fn main() {
+    let mut reuse_sources = false;
+    let mut num_sources = 1000;
+    let mut num_destinations = 1000;
+    let mut args = env::args().skip(1);
+    while let Some(arg) = args.next() {
+        match &arg[..] {
+            "-h" | "--help" => help(),
+            "-r" => reuse_sources = true,
+            "-s" | "--sources" => {
+                if let Some(arg_config) = args.next() {
+                    num_sources = arg_config.parse().unwrap();
+                } else {
+                    panic!("No value specified for parameter --config.");
+                }
+            }
+            "-d" | "--destinations" => {
+                if let Some(arg_config) = args.next() {
+                    num_destinations = arg_config.parse().unwrap();
+                } else {
+                    panic!("No value specified for parameter --config.");
+                }
+            }
+            _ => {
+                if arg.starts_with('-') {
+                    println!("Unkown argument {}", arg);
+                } else {
+                    println!("Unkown positional argument {}", arg);
+                }
+            }
+        }
+    }
+
     let mut traces: Vec<trace::SourceTrace> = vec![];
-    let mut sources: Vec<source::Source<Normal>> = vec![];
+    let working_dir = "./sim/experiment1/";
     let message_distr = Normal::new(100.0, 10.0).unwrap();
     let mut rng = rand::thread_rng();
-    for i in 1..1001 {
-        let mut source = source::Source::new(
-            message_distr.sample(&mut rng).ceil() as u64,
-            Normal::new(10.0, 50.0).unwrap(),
-            Normal::new(5000.0, 1000.0).unwrap(),
-        );
-        traces.push(source.gen_source_trace(String::from("s") + &i.to_string()));
+    let mut traces = vec![];
+    fs::create_dir_all(working_dir).unwrap();
+    let source_path = String::from("") + working_dir + "./sources";
+
+    if reuse_sources {
+        traces = trace::read_source_trace_from_file(&source_path).unwrap();
+    } else {
+        for i in 0..num_sources {
+            let mut source = source::Source::new(
+                message_distr.sample(&mut rng).ceil() as u64,
+                Normal::new(100.0, 10.0).unwrap(),
+                Normal::new(50000.0, 10000.0).unwrap(),
+            );
+            traces.push(source.gen_source_trace(String::from("s") + &i.to_string()));
+        }
     }
 
-    /*let trace_dir = "./sim/traces/";
-    fs::create_dir_all(trace_dir).unwrap();
-    for trace in traces.iter() {
-        let path = String::from(trace_dir) + &trace.source_name;
-        trace.write_to_file(&path).unwrap();
-    }*/
+    write_sources(&source_path, &traces).unwrap();
 
     // Not needed but to ensure CSV stuff is working
-    /*let mut traces = vec![];
-    let paths = fs::read_dir(trace_dir).unwrap();
-    for path in paths {
-        traces.push(
-            trace::read_source_trace_from_file(path.unwrap().path().to_str().unwrap()).unwrap(),
-        );
+
+    let source_destination_map_path = working_dir.to_string() + "/source_destination_map";
+
+    if num_destinations > num_sources {
+        num_destinations = num_sources;
     }
-    let source_destination_map_path = "./sim/source_destination_map";
-    */
     let source_name_list = traces.iter().map(|x| x.source_name.clone()).collect();
-    let source_destination_map = destination::uniform_destination_selection(100, source_name_list);
-    /*trace::write_source_destination_map(source_destination_map, source_destination_map_path)
+    let source_destination_map =
+        destination::uniform_destination_selection(num_destinations, source_name_list);
+    trace::write_source_destination_map(&source_destination_map, &source_destination_map_path)
         .unwrap();
 
-
     // Not needed but to ensure CSV stuff is working
-    let source_destination_map =
+    /*let source_destination_map =
         trace::read_source_destination_map_from_file(source_destination_map_path).unwrap();
     */
     let pre_network_trace = network::merge_traces(traces, &source_destination_map);
