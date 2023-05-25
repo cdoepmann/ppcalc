@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use rand::{distributions::Uniform, prelude::Distribution};
+use serde::{Deserialize, Serialize};
 use statrs::distribution::Normal;
 
+#[derive(Serialize, Deserialize)]
 pub enum DestinationSelectionType {
     Uniform,
     RoundRobin,
@@ -11,7 +13,7 @@ pub enum DestinationSelectionType {
 }
 
 pub fn destination_selection(
-    selection_type: DestinationSelectionType,
+    selection_type: &DestinationSelectionType,
     number_of_destinations: u64,
     source_name_list: Vec<String>,
 ) -> HashMap<String, String> {
