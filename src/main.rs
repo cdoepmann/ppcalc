@@ -195,7 +195,7 @@ fn main() {
     let mut rng = rand::thread_rng();
     let mut traces = vec![];
     fs::create_dir_all(working_dir.clone()).unwrap();
-    let source_path = working_dir.clone() + "./sources";
+    let source_path = working_dir.clone() + "../ppcalc-data/sources";
     write_sources(&source_path, &traces).unwrap();
 
     if params.reuse_sources {
@@ -212,7 +212,8 @@ fn main() {
     }
 
     // Not needed but to ensure CSV stuff is working
-    let working_dir = working_dir.clone() + "./" + params.num_destinations.to_string().as_str();
+    let working_dir =
+        working_dir.clone() + "./" + params.num_destinations.to_string().as_str() + "/";
     fs::create_dir_all(working_dir.clone()).unwrap();
     let source_destination_map_path = working_dir.to_string() + "/source_destination_map";
 
