@@ -225,7 +225,7 @@ fn main() {
     }
 
     // Not needed but to ensure CSV stuff is working
-    let mut job_id = String::from("unknown");
+    let mut job_id = String::from("JOB_ID");
     match env::var(job_id.clone()) {
         Ok(v) => job_id = v,
         Err(e) => panic!("${} is not set ({})", job_id, e),
