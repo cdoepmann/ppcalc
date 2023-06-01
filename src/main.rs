@@ -100,7 +100,7 @@ fn main() {
                     panic!("No value specified for parameter --destination-selection");
                 }
             }
-            "-d" | "--destinations" => {
+            "-e" | "--experiment" => {
                 if let Some(arg_config) = args.next() {
                     params.experiment = arg_config.parse().unwrap();
                 } else {
@@ -229,6 +229,12 @@ fn main() {
     match env::var(job_id.clone()) {
         Ok(v) => job_id = v,
         Err(e) => panic!("${} is not set ({})", job_id, e),
+    }
+
+    let env_num_destinations = String::from("NUM_DESTINATIONS");
+    match env::var(env_num_destinations.clone()) {
+        Ok(v) => params.num_destinations = v.parse().unwrap(),
+        Err(_e) => println!("NUM_DESTINATIONS environment variable has not been set"),
     }
     let working_dir = working_dir.clone()
         + "./"
