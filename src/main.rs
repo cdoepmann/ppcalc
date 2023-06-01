@@ -195,7 +195,7 @@ fn main() {
     let mut rng = rand::thread_rng();
     let mut traces = vec![];
     fs::create_dir_all(working_dir.clone()).unwrap();
-    let source_path = working_dir.clone() + "../ppcalc-data/sources";
+    let source_path = working_dir.clone() + "../../../ppcalc-data/sources";
     write_sources(&source_path, &traces).unwrap();
 
     if params.reuse_sources {
@@ -290,7 +290,7 @@ fn main() {
     )
     .unwrap();
 
-    let parameter_path = String::from(&working_dir) + "parametes.json";
+    let parameter_path = String::from(&working_dir) + "parameters.json";
     std::fs::write(
         parameter_path,
         serde_json::to_string_pretty(&params).unwrap(),
