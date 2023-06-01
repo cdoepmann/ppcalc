@@ -245,9 +245,6 @@ fn main() {
     fs::create_dir_all(working_dir.clone()).unwrap();
     let source_destination_map_path = working_dir.to_string() + "/source_destination_map";
 
-    if params.num_destinations > params.num_sources {
-        params.num_destinations = params.num_sources;
-    }
     let source_name_list = traces.iter().map(|x| x.source_name.clone()).collect();
     let source_destination_map = destination::destination_selection(
         &params.destination_selection_type,
