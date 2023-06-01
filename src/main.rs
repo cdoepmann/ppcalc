@@ -18,6 +18,7 @@ fn help() {
 #[derive(Serialize, Deserialize)]
 struct Parameters {
     reuse_sources: bool,
+    experiment: String,
     destination_selection_type: destination::DestinationSelectionType,
     num_sources: u64,
     num_destinations: u64,
@@ -46,6 +47,7 @@ impl Parameters {
             num_messages_dev: 10.0,
             network_delay_min: 1,
             network_delay_max: 100,
+            experiment: String::from("experiment1"),
         }
     }
 }
@@ -61,14 +63,14 @@ fn main() {
                 if let Some(arg_config) = args.next() {
                     params.num_sources = arg_config.parse().unwrap();
                 } else {
-                    panic!("No value specified for parameter --config.");
+                    panic!("No value specified for parameter -s");
                 }
             }
             "-d" | "--destinations" => {
                 if let Some(arg_config) = args.next() {
                     params.num_destinations = arg_config.parse().unwrap();
                 } else {
-                    panic!("No value specified for parameter --config.");
+                    panic!("No value specified for parameter -d");
                 }
             }
             "--destination_selection" => {
@@ -95,10 +97,16 @@ fn main() {
                         }
                     }
                 } else {
-                    panic!("No value specified for parameter --config.");
+                    panic!("No value specified for parameter --destination-selection");
                 }
             }
-
+            "-d" | "--destinations" => {
+                if let Some(arg_config) = args.next() {
+                    params.experiment = arg_config.parse().unwrap();
+                } else {
+                    panic!("No value specified for parameter -e");
+                }
+            }
             "--source_imd_distr" => {
                 if let Some(arg_config) = args.next() {
                     match arg_config
@@ -190,12 +198,13 @@ fn main() {
     }
 
     let mut traces: Vec<trace::SourceTrace> = vec![];
-    let working_dir = String::from("./sim/experiment1/");
+    let working_dir = String::from("./sim/") + params.experiment.as_str() + "/";
     let message_distr = Normal::new(params.num_messages_mean, params.num_messages_dev).unwrap();
     let mut rng = rand::thread_rng();
     let mut traces = vec![];
     fs::create_dir_all(working_dir.clone()).unwrap();
-    let source_path = working_dir.clone() + "../../../ppcalc-data/sources";
+    let source_path =
+        working_dir.clone() + "../../../ppcalc-data/" + params.experiment.as_str() + "/sources.json";
     write_sources(&source_path, &traces).unwrap();
 
     if params.reuse_sources {
