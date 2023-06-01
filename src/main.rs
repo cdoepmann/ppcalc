@@ -9,7 +9,7 @@ use csv::WriterBuilder;
 use rand_distr::Distribution;
 use serde::{Deserialize, Serialize};
 use statrs::distribution::Normal;
-use std::{env, fs};
+use std::{env, fs, path::Path};
 use trace::write_sources;
 fn help() {
     println!("Help is currently not available. Please panic");
@@ -207,8 +207,12 @@ fn main() {
         working_dir.clone() + "../../../ppcalc-data/" + params.experiment.as_str() + "/sources.json";
     write_sources(&source_path, &traces).unwrap();
 
-    if params.reuse_sources {
+    let mut source_file_exists: bool = true;
+    source_file_exists = Path::new(&source_path).exists();
+
+    if params.reuse_sources || source_file_exists {
         traces = trace::read_source_trace_from_file(&source_path).unwrap();
+        println!("Reusing sources");
     } else {
         for i in 0..params.num_sources {
             let mut source = source::Source::new(
