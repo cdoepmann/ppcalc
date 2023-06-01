@@ -196,6 +196,7 @@ fn main() {
     let mut traces = vec![];
     fs::create_dir_all(working_dir.clone()).unwrap();
     let source_path = working_dir.clone() + "./sources";
+    write_sources(&source_path, &traces).unwrap();
 
     if params.reuse_sources {
         traces = trace::read_source_trace_from_file(&source_path).unwrap();
@@ -210,10 +211,9 @@ fn main() {
         }
     }
 
-    write_sources(&source_path, &traces).unwrap();
-
     // Not needed but to ensure CSV stuff is working
-
+    let working_dir = working_dir.clone() + "./" + params.num_destinations.to_string().as_str();
+    fs::create_dir_all(working_dir.clone()).unwrap();
     let source_destination_map_path = working_dir.to_string() + "/source_destination_map";
 
     if params.num_destinations > params.num_sources {
