@@ -301,10 +301,7 @@ fn main() {
         )
         .unwrap();
     */
-    let deanomization_path = String::from(&working_dir)
-        + "/deanomization"
-        + &params.num_destinations.to_string()
-        + ".json";
+    let deanomization_path = String::from(&working_dir) + "/deanomization.json";
     let deanomization_vec = plot.deanonymized_users_over_time();
     std::fs::write(
         deanomization_path,
