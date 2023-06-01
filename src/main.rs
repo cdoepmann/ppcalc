@@ -225,8 +225,17 @@ fn main() {
     }
 
     // Not needed but to ensure CSV stuff is working
-    let working_dir =
-        working_dir.clone() + "./" + params.num_destinations.to_string().as_str() + "/";
+    let mut job_id = String::from("unknown");
+    match env::var(job_id.clone()) {
+        Ok(v) => job_id = v,
+        Err(e) => panic!("${} is not set ({})", job_id, e),
+    }
+    let working_dir = working_dir.clone()
+        + "./"
+        + params.num_destinations.to_string().as_str()
+        + "/"
+        + job_id.as_str()
+        + "/";
     fs::create_dir_all(working_dir.clone()).unwrap();
     let source_destination_map_path = working_dir.to_string() + "/source_destination_map";
 
