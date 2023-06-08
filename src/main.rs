@@ -207,8 +207,10 @@ fn main() {
     let mut rng = rand::thread_rng();
     let mut traces = vec![];
     fs::create_dir_all(working_dir.clone()).unwrap();
-    let source_path =
-        working_dir.clone() + "../../ppcalc-data/" + params.experiment.as_str() + "/sources.json";
+    let source_path = working_dir.clone()
+        + "../../../../ppcalc-data/"
+        + params.experiment.as_str()
+        + "/sources.json";
     write_sources(&source_path, &traces).unwrap();
 
     let mut source_file_exists: bool = true;
