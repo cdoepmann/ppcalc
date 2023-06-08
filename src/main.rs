@@ -209,7 +209,6 @@ fn main() {
     fs::create_dir_all(working_dir.clone()).unwrap();
     let source_path =
         working_dir.clone() + "../../../ppcalc-data/" + params.experiment.as_str() + "/sources.json";
-    write_sources(&source_path, &traces).unwrap();
 
     let mut source_file_exists: bool = false;
     source_file_exists = Path::new(&source_path).exists();
@@ -228,6 +227,7 @@ fn main() {
             );
             traces.push(source.gen_source_trace(String::from("s") + &i.to_string()));
         }
+        write_sources(&source_path, &traces).unwrap();
     }
 
     // Not needed but to ensure CSV stuff is working
