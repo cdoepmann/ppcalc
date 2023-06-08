@@ -207,10 +207,8 @@ fn main() {
     let mut rng = rand::thread_rng();
     let mut traces = vec![];
     fs::create_dir_all(working_dir.clone()).unwrap();
-    let source_path = working_dir.clone()
-        + "../../../../ppcalc-data/"
-        + params.experiment.as_str()
-        + "/sources.json";
+    let source_path =
+        working_dir.clone() + "../../../ppcalc-data/" + params.experiment.as_str() + "/sources.json";
     write_sources(&source_path, &traces).unwrap();
 
     let mut source_file_exists: bool = true;
@@ -236,7 +234,7 @@ fn main() {
     let mut job_id = String::from("JOB_ID");
     match env::var(job_id.clone()) {
         Ok(v) => job_id = v,
-        Err(e) => panic!("${} is not set ({})", job_id, e),
+        Err(e) => job_id = String::from("Buergergeld_is_real"),
     }
 
     bench.measure("generating destinations", BENCH_ENABLED);
