@@ -1,4 +1,5 @@
 mod analytics;
+mod bench;
 mod destination;
 mod network;
 mod plot;
@@ -54,7 +55,10 @@ impl Parameters {
 fn main() {
     let mut args = env::args().skip(1);
     let mut params = Parameters::default();
+    let mut bench = bench::Bench::new();
+    let BENCH_ENABLED = true;
 
+    bench.measure("Command line parsing", BENCH_ENABLED);
     while let Some(arg) = args.next() {
         match &arg[..] {
             "-h" | "--help" => help(),
@@ -211,9 +215,11 @@ fn main() {
     source_file_exists = Path::new(&source_path).exists();
 
     if params.reuse_sources || source_file_exists {
+        bench.measure("reading sources", BENCH_ENABLED);
         traces = trace::read_source_trace_from_file(&source_path).unwrap();
         println!("Reusing sources");
     } else {
+        bench.measure("generate sources", BENCH_ENABLED);
         for i in 0..params.num_sources {
             let mut source = source::Source::new(
                 message_distr.sample(&mut rng).ceil() as u64,
@@ -231,6 +237,7 @@ fn main() {
         Err(e) => panic!("${} is not set ({})", job_id, e),
     }
 
+    bench.measure("generating destinations", BENCH_ENABLED);
     let env_num_destinations = String::from("NUM_DESTINATIONS");
     match env::var(env_num_destinations.clone()) {
         Ok(v) => params.num_destinations = v.parse().unwrap(),
@@ -244,7 +251,7 @@ fn main() {
         + "/";
     fs::create_dir_all(working_dir.clone()).unwrap();
     let source_destination_map_path = working_dir.to_string() + "/source_destination_map";
-
+    bench.measure("generating source-destination map ", BENCH_ENABLED);
     let source_name_list = traces.iter().map(|x| x.source_name.clone()).collect();
     let source_destination_map = destination::destination_selection(
         &params.destination_selection_type,
@@ -258,6 +265,7 @@ fn main() {
     /*let source_destination_map =
         trace::read_source_destination_map_from_file(source_destination_map_path).unwrap();
     */
+    bench.measure("merge traces", BENCH_ENABLED);
     let pre_network_trace = network::merge_traces(traces, &source_destination_map);
     let network_trace = network::generate_network_delay(
         params.network_delay_min,
@@ -269,6 +277,7 @@ fn main() {
         .unwrap();
     let network_trace = trace::read_network_trace_from_file("./sim/network_trace.csv").unwrap();
     */
+    bench.measure("source anonymity sets", BENCH_ENABLED);
     let (source_anonymity_sets, destination_anonymity_sets) =
         analytics::compute_message_anonymity_sets(
             &network_trace,
@@ -276,6 +285,7 @@ fn main() {
             params.network_delay_max,
         )
         .unwrap();
+    bench.measure("source relationship anonymity sets", BENCH_ENABLED);
     let (source_relationship_anonymity_sets, destination_relationship_anonymity_sets) =
         analytics::compute_relationship_anonymity(
             &network_trace,
@@ -284,6 +294,7 @@ fn main() {
         )
         .unwrap();
 
+    bench.measure("plot", BENCH_ENABLED);
     let plot = plot::PlotFormat::new(source_relationship_anonymity_sets, source_destination_map);
     /*
     /* for (source, iterative_anonymity_sets) in source_relationship_anonymity_sets.iter() {
@@ -304,6 +315,7 @@ fn main() {
         )
         .unwrap();
     */
+    bench.measure("deanomization", BENCH_ENABLED);
     let deanomization_path = String::from(&working_dir) + "/deanomization.json";
     let deanomization_vec = plot.deanonymized_users_over_time();
     std::fs::write(
@@ -312,6 +324,7 @@ fn main() {
     )
     .unwrap();
 
+    bench.measure("parameters", BENCH_ENABLED);
     let parameter_path = String::from(&working_dir) + "parameters.json";
     std::fs::write(
         parameter_path,
