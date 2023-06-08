@@ -211,7 +211,7 @@ fn main() {
         working_dir.clone() + "../../../ppcalc-data/" + params.experiment.as_str() + "/sources.json";
     write_sources(&source_path, &traces).unwrap();
 
-    let mut source_file_exists: bool = true;
+    let mut source_file_exists: bool = false;
     source_file_exists = Path::new(&source_path).exists();
 
     if params.reuse_sources || source_file_exists {
