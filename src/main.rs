@@ -207,11 +207,9 @@ fn main() {
     let mut rng = rand::thread_rng();
     let mut traces = vec![];
     fs::create_dir_all(working_dir.clone()).unwrap();
-    let source_path =
-        working_dir.clone() + "../../../ppcalc-data/" + params.experiment.as_str() + "/sources.json";
-
-    let mut source_file_exists: bool = false;
-    source_file_exists = Path::new(&source_path).exists();
+    let source_dir = working_dir.clone() + "../../../ppcalc-data/" + params.experiment.as_str();
+    let source_path = source_dir.clone() + "/sources.json";
+    let source_file_exists: bool = Path::new(&source_path).exists();
 
     if params.reuse_sources || source_file_exists {
         bench.measure("reading sources", BENCH_ENABLED);
@@ -227,6 +225,7 @@ fn main() {
             );
             traces.push(source.gen_source_trace(String::from("s") + &i.to_string()));
         }
+        fs::create_dir_all(&source_dir.clone()).unwrap();
         write_sources(&source_path, &traces).unwrap();
     }
 
@@ -286,7 +285,7 @@ fn main() {
         )
         .unwrap();
     bench.measure("source relationship anonymity sets", BENCH_ENABLED);
-    let (source_relationship_anonymity_sets, destination_relationship_anonymity_sets) =
+    let (source_relationship_anonymity_sets, _destination_relationship_anonymity_sets) =
         analytics::compute_relationship_anonymity(
             &network_trace,
             params.network_delay_min,

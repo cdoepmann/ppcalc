@@ -149,11 +149,12 @@ pub fn compute_relationship_anonymity(
         source_message_anonymity_sets,
     )?;
     /* Be wary that this yields only useful results if there is just one source per destination */
-    let destination_relationship_anonymity_sets = compute_relation_ship_anonymity_sets(
+    let destination_relationship_anonymity_sets = HashMap::new();
+    /*compute_relation_ship_anonymity_sets(
         destination_message_mapping,
         source_mapping,
         destination_message_anonymity_sets,
-    )?;
+    )?;*/
     Ok((
         source_relationship_anonymity_sets,
         destination_relationship_anonymity_sets,
