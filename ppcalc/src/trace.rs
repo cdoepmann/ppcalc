@@ -1,9 +1,7 @@
-use csv::{ReaderBuilder, WriterBuilder};
+use csv::WriterBuilder;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::File, io::BufReader, vec};
+use std::{collections::HashMap, fs::File, io::BufReader};
 use time::PrimitiveDateTime;
-
-use ppcalc_metric::{Trace, TraceEntry};
 
 #[derive(Serialize, Deserialize)]
 pub struct SourceTrace {
@@ -24,13 +22,14 @@ pub struct PreNetworkTraceEntry {
     pub destination_id: u64,
 }
 
-impl SourceTrace {
-    pub fn write_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut wtr = WriterBuilder::new().has_headers(false).from_path(path)?;
-        wtr.serialize(self)?;
-        Ok(())
-    }
-}
+// impl SourceTrace {
+//     pub fn write_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+//         let mut wtr = WriterBuilder::new().has_headers(false).from_path(path)?;
+//         wtr.serialize(self)?;
+//         Ok(())
+//     }
+// }
+
 pub fn write_sources(
     path: &str,
     traces: &Vec<SourceTrace>,
@@ -63,18 +62,4 @@ pub fn write_source_destination_map(
         })?;
     }
     Ok(())
-}
-
-pub fn read_source_destination_map_from_file(
-    path: &str,
-) -> Result<HashMap<u64, u64>, Box<dyn std::error::Error>> {
-    let mut rdr = ReaderBuilder::new().from_path(path)?;
-    let mut iter = rdr.deserialize();
-    let mut map: HashMap<u64, u64> = HashMap::new();
-
-    while let Some(result) = iter.next() {
-        let entry: SourceDestinationMapEntry = result?;
-        map.insert(entry.source, entry.destination);
-    }
-    Ok(map)
 }

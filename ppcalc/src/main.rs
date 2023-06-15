@@ -273,7 +273,7 @@ fn main() {
     /*network_trace
         .write_to_file("./sim/network_trace.csv")
         .unwrap();
-    let network_trace = trace::read_network_trace_from_file("./sim/network_trace.csv").unwrap();
+    let network_trace = ppcalc_metric::Trace::from_csv("./sim/network_trace.csv").unwrap();
     */
     bench.measure("source anonymity sets", BENCH_ENABLED);
     let (source_anonymity_sets, destination_anonymity_sets) =

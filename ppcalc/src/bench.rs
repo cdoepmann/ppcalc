@@ -17,6 +17,7 @@ impl Bench {
         self.timer = Instant::now();
     }
 
+    #[allow(unused)]
     pub fn reset(&mut self) {
         self.timer = Instant::now();
         self.tag = String::from("");
