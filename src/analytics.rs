@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -167,50 +168,24 @@ pub fn compute_relation_ship_anonymity_sets(
     message_to_id_mapping_b: HashMap<u64, u64>,
     message_anonymity_sets_a: HashMap<u64, Vec<u64>>,
 ) -> Result<HashMap<u64, Vec<(u64, Vec<u64>)>>, Box<dyn std::error::Error>> {
-    let mut relationship_anonymity_sets = HashMap::new();
     //TODO rayon
-    // IDs für source und destination
     // Bitvektoren für Anonymity sets
-    for (name_a, messages_a) in message_collection_a {
-        let mut anonymity_sets: Vec<(u64, Vec<u64>)> = vec![];
-        let mut selected_messages: Vec<u64> = vec![];
-        let mut current_relationship_anonymity_set = vec![];
-        if let Some((first_message, remaining_messages)) = messages_a.split_first() {
-            /* Get Message Anonymity Set */
-            let mas = message_anonymity_sets_a.get(first_message).unwrap();
-            for message_b in mas {
-                // Determine Destination
-                let name_b = message_to_id_mapping_b
-                    .get(message_b)
-                    .ok_or("Name not found")?;
-                // Check if Destination is already in current set
-                if current_relationship_anonymity_set.contains(name_b) {
-                    continue;
-                }
-                // Check if this message has already been "used" in a previous round
-                if !selected_messages.contains(message_b) {
-                    selected_messages.push(*message_b);
-                    current_relationship_anonymity_set.push(name_b.clone());
-                }
-            }
-            anonymity_sets.push((*first_message, current_relationship_anonymity_set));
-
-            for message_a in remaining_messages {
-                let mut current_relationship_anonymity_set = vec![];
-                let mas = message_anonymity_sets_a.get(message_a).unwrap();
+    let relationship_anonymity_sets = message_collection_a
+        .par_iter()
+        .map(|(name_a, messages_a)| {
+            let mut anonymity_sets: Vec<(u64, Vec<u64>)> = vec![];
+            let mut selected_messages: Vec<u64> = vec![];
+            let mut current_relationship_anonymity_set = vec![];
+            if let Some((first_message, remaining_messages)) = messages_a.split_first() {
+                /* Get Message Anonymity Set */
+                let mas = message_anonymity_sets_a.get(first_message).unwrap();
                 for message_b in mas {
                     // Determine Destination
                     let name_b = message_to_id_mapping_b
                         .get(message_b)
-                        .ok_or("name not found")?;
-                    // Check if name is in previous set
-                    let (_, previous_relationship_anonymity_set) = anonymity_sets
-                        .last()
-                        .ok_or("There is no last anonymity set")?;
-                    if !previous_relationship_anonymity_set.contains(name_b) {
-                        continue;
-                    }
-                    // Check if name is already in current set
+                        .ok_or("Name not found")
+                        .unwrap();
+                    // Check if Destination is already in current set
                     if current_relationship_anonymity_set.contains(name_b) {
                         continue;
                     }
@@ -220,11 +195,41 @@ pub fn compute_relation_ship_anonymity_sets(
                         current_relationship_anonymity_set.push(name_b.clone());
                     }
                 }
-                anonymity_sets.push((*message_a, current_relationship_anonymity_set));
+                anonymity_sets.push((*first_message, current_relationship_anonymity_set));
+
+                for message_a in remaining_messages {
+                    let mut current_relationship_anonymity_set = vec![];
+                    let mas = message_anonymity_sets_a.get(message_a).unwrap();
+                    for message_b in mas {
+                        // Determine Destination
+                        let name_b = message_to_id_mapping_b
+                            .get(message_b)
+                            .ok_or("name not found")
+                            .unwrap();
+                        // Check if name is in previous set
+                        let (_, previous_relationship_anonymity_set) = anonymity_sets
+                            .last()
+                            .ok_or("There is no last anonymity set")
+                            .unwrap();
+                        if !previous_relationship_anonymity_set.contains(name_b) {
+                            continue;
+                        }
+                        // Check if name is already in current set
+                        if current_relationship_anonymity_set.contains(name_b) {
+                            continue;
+                        }
+                        // Check if this message has already been "used" in a previous round
+                        if !selected_messages.contains(message_b) {
+                            selected_messages.push(*message_b);
+                            current_relationship_anonymity_set.push(name_b.clone());
+                        }
+                    }
+                    anonymity_sets.push((*message_a, current_relationship_anonymity_set));
+                }
             }
-            relationship_anonymity_sets.insert(name_a, anonymity_sets);
-        }
-    }
+            (*name_a, anonymity_sets)
+        })
+        .collect();
     Ok(relationship_anonymity_sets)
 }
 
