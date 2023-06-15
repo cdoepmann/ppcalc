@@ -1,4 +1,3 @@
-mod analytics;
 mod bench;
 mod destination;
 mod network;
