@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, io::BufReader, vec};
 use time::PrimitiveDateTime;
 
+use ppcalc_metric::{Trace, TraceEntry};
+
 #[derive(Serialize, Deserialize)]
 pub struct SourceTrace {
     pub source_id: u64,
@@ -15,24 +17,11 @@ pub struct SourceDestinationMapEntry {
     destination: u64,
 }
 
-pub struct Trace {
-    pub entries: Vec<TraceEntry>,
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct PreNetworkTraceEntry {
     pub source_id: u64,
     pub source_timestamp: PrimitiveDateTime,
     pub destination_id: u64,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct TraceEntry {
-    pub m_id: u64,
-    pub source_id: u64,
-    pub source_timestamp: PrimitiveDateTime,
-    pub destination_id: u64,
-    pub destination_timestamp: PrimitiveDateTime,
 }
 
 impl SourceTrace {
@@ -88,25 +77,4 @@ pub fn read_source_destination_map_from_file(
         map.insert(entry.source, entry.destination);
     }
     Ok(map)
-}
-
-pub fn read_network_trace_from_file(path: &str) -> Result<Trace, Box<dyn std::error::Error>> {
-    let mut rdr = ReaderBuilder::new().from_path(path)?;
-    let mut iter = rdr.deserialize();
-    let mut entries: Vec<TraceEntry> = vec![];
-
-    while let Some(result) = iter.next() {
-        let entry: TraceEntry = result?;
-        entries.push(entry);
-    }
-    Ok(Trace { entries })
-}
-impl Trace {
-    pub fn write_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut wtr = WriterBuilder::new().from_path(path)?;
-        for entry in self.entries.iter() {
-            wtr.serialize(entry)?;
-        }
-        Ok(())
-    }
 }

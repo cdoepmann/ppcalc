@@ -1,17 +1,6 @@
-[package]
-name = "corsim"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-csv = "1.2.0"
-num-traits = "0.2.15"
-rand = "0.8.5"
-rand_distr = "0.4.3"
-rayon = "1.7.0"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0.96"
-statrs = "0.16.0"
-time = {version ="0.3.20", features = ["macros", "serde-human-readable"]}
+members = [
+    "ppcalc",
+    "ppcalc_metric"
+]

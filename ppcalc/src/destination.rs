@@ -65,7 +65,6 @@ pub fn small_world_destination_selection(
     /* TODO */
     let mut map: HashMap<u64, u64> = HashMap::new();
     panic!("Small world destination selection is not implemented yet");
-    map
 }
 
 // TODO

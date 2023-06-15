@@ -2,20 +2,22 @@ use crate::trace;
 use rand::{distributions::Uniform, prelude::Distribution};
 use std::collections::HashMap;
 
+use ppcalc_metric::{Trace, TraceEntry};
+
 // It is important that this is (to some extend) reproducable, so we can change/analyse the destination distribution!
 // Lets maybe only create the entries we need?
 pub fn generate_network_delay(
     min_delay: i64,
     max_delay: i64,
     pre_network_trace: Vec<trace::PreNetworkTraceEntry>,
-) -> trace::Trace {
+) -> Trace {
     let mut trace = vec![];
     let mut m_id = 0;
     let distr = Uniform::from(min_delay..max_delay);
     let mut rng = rand::thread_rng();
     let delay = distr.sample(&mut rng);
     for entry in pre_network_trace {
-        trace.push(trace::TraceEntry {
+        trace.push(TraceEntry {
             m_id: m_id,
             source_id: entry.source_id,
             source_timestamp: entry.source_timestamp,
@@ -27,7 +29,7 @@ pub fn generate_network_delay(
         });
         m_id += 1;
     }
-    trace::Trace { entries: trace }
+    Trace { entries: trace }
 }
 
 /* Todo we have sorted vectors of timestamps, this should be doable in something like timestamps * log(sources) */
