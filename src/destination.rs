@@ -51,8 +51,6 @@ pub fn round_robin_destination_selection(
     source_id_list: Vec<u64>,
 ) -> HashMap<u64, u64> {
     let mut map: HashMap<u64, u64> = HashMap::new();
-    let distr = Uniform::from(0..number_of_destinations);
-    let mut rng = rand::thread_rng();
     for (i, source_id) in source_id_list.into_iter().enumerate() {
         map.insert(source_id, (i % number_of_destinations as usize) as u64);
     }

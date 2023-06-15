@@ -5,8 +5,6 @@ mod network;
 mod plot;
 mod source;
 mod trace;
-use core::num;
-use csv::WriterBuilder;
 use rand_distr::Distribution;
 use serde::{Deserialize, Serialize};
 use statrs::distribution::Normal;
@@ -97,11 +95,11 @@ fn main() {
                                 destination::DestinationSelectionType::SmallWorld
                         }
                         _ => {
-                            panic!("Wrong argument for --sender-im-distr");
+                            panic!("Wrong argument for --destination_selection");
                         }
                     }
                 } else {
-                    panic!("No value specified for parameter --destination-selection");
+                    panic!("No value specified for parameter --destination_selection");
                 }
             }
             "-e" | "--experiment" => {
@@ -124,11 +122,11 @@ fn main() {
                             params.source_imd_dev = arg_source_dev.parse().unwrap();
                         }
                         _ => {
-                            panic!("Wrong argument for --sender-im-distr");
+                            panic!("Wrong argument for --source_imd_distr");
                         }
                     }
                 } else {
-                    panic!("No value specified for parameter --config.");
+                    panic!("No value specified for parameter --source_imd_distr.");
                 }
             }
             "--source_wait_distr" => {
@@ -144,11 +142,11 @@ fn main() {
                             params.source_wait_dev = arg_source_wait_dev.parse().unwrap();
                         }
                         _ => {
-                            panic!("Wrong argument for --sender-im-distr");
+                            panic!("Wrong argument for --source_wait_distr");
                         }
                     }
                 } else {
-                    panic!("No value specified for parameter --config.");
+                    panic!("No value specified for parameter --source_wait_distr.");
                 }
             }
             "--num_messages_distr" => {
@@ -164,11 +162,11 @@ fn main() {
                             params.num_messages_dev = arg_num_messages_dev.parse().unwrap();
                         }
                         _ => {
-                            panic!("Wrong argument for --sender-im-distr");
+                            panic!("Wrong argument for --num_messages_distr");
                         }
                     }
                 } else {
-                    panic!("No value specified for parameter --config.");
+                    panic!("No value specified for parameter --num_messages_distr.");
                 }
             }
             "--network_delay" => {
@@ -184,11 +182,11 @@ fn main() {
                             params.network_delay_max = arg_network_delay_max.parse().unwrap();
                         }
                         _ => {
-                            panic!("Wrong argument for --sender-im-distr");
+                            panic!("Wrong argument for --network_delay");
                         }
                     }
                 } else {
-                    panic!("No value specified for parameter --config.");
+                    panic!("No value specified for parameter --network_delay.");
                 }
             }
             _ => {
@@ -201,7 +199,6 @@ fn main() {
         }
     }
 
-    let mut traces: Vec<trace::SourceTrace> = vec![];
     let working_dir = String::from("./sim/") + params.experiment.as_str() + "/";
     let message_distr = Normal::new(params.num_messages_mean, params.num_messages_dev).unwrap();
     let mut rng = rand::thread_rng();

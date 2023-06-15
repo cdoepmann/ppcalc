@@ -1,4 +1,4 @@
-use crate::{destination, trace};
+use crate::trace;
 use rand::{distributions::Uniform, prelude::Distribution};
 use std::collections::HashMap;
 
