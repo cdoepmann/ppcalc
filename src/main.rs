@@ -223,7 +223,7 @@ fn main() {
                 Normal::new(params.source_imd_mean, params.source_imd_dev).unwrap(),
                 Normal::new(params.source_wait_mean, params.source_wait_dev).unwrap(),
             );
-            traces.push(source.gen_source_trace(String::from("s") + &i.to_string()));
+            traces.push(source.gen_source_trace(i));
         }
         fs::create_dir_all(&source_dir.clone()).unwrap();
         write_sources(&source_path, &traces).unwrap();
@@ -251,7 +251,7 @@ fn main() {
     fs::create_dir_all(working_dir.clone()).unwrap();
     let source_destination_map_path = working_dir.to_string() + "/source_destination_map";
     bench.measure("generating source-destination map ", BENCH_ENABLED);
-    let source_name_list = traces.iter().map(|x| x.source_name.clone()).collect();
+    let source_name_list = traces.iter().map(|x| x.source_id.clone()).collect();
     let source_destination_map = destination::destination_selection(
         &params.destination_selection_type,
         params.num_destinations,

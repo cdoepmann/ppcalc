@@ -31,14 +31,14 @@ struct ProcessingEvent {
     event_type: EventType,
     ts: PrimitiveDateTime,
     m_id: u64,
-    name: String,
+    id: u64,
 }
 impl Display for ProcessingEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{} {} {} {}",
-            self.event_type, self.ts, self.m_id, self.name
+            self.event_type, self.ts, self.m_id, self.id
         )
     }
 }
@@ -90,29 +90,29 @@ pub fn compute_message_anonymity_sets(
 
 fn compute_source_and_destination_mapping(
     trace: &trace::Trace,
-) -> (HashMap<u64, String>, HashMap<u64, String>) {
+) -> (HashMap<u64, u64>, HashMap<u64, u64>) {
     let mut source_mapping = HashMap::new();
     let mut destination_mapping = HashMap::new();
     for entry in trace.entries.iter() {
-        source_mapping.insert(entry.m_id, entry.source_name.clone());
-        destination_mapping.insert(entry.m_id, entry.destination_name.clone());
+        source_mapping.insert(entry.m_id, entry.source_id.clone());
+        destination_mapping.insert(entry.m_id, entry.destination_id.clone());
     }
     (source_mapping, destination_mapping)
 }
 
 fn compute_source_and_destination_message_mapping(
     trace: &trace::Trace,
-) -> (HashMap<String, Vec<u64>>, HashMap<String, Vec<u64>>) {
+) -> (HashMap<u64, Vec<u64>>, HashMap<u64, Vec<u64>>) {
     let mut source_message_mapping = HashMap::new();
     let mut destination_message_mapping = HashMap::new();
     for trace_entry in trace.entries.iter() {
-        match source_message_mapping.entry(trace_entry.source_name.clone()) {
+        match source_message_mapping.entry(trace_entry.source_id.clone()) {
             Entry::Vacant(e) => {
                 e.insert(vec![trace_entry.m_id]);
             }
             Entry::Occupied(mut e) => e.get_mut().push(trace_entry.m_id),
         }
-        match destination_message_mapping.entry(trace_entry.destination_name.clone()) {
+        match destination_message_mapping.entry(trace_entry.destination_id.clone()) {
             Entry::Vacant(e) => {
                 e.insert(vec![trace_entry.m_id]);
             }
@@ -133,8 +133,8 @@ pub fn compute_relationship_anonymity(
     max_delay: i64,
 ) -> Result<
     (
-        HashMap<String, Vec<(u64, Vec<String>)>>,
-        HashMap<String, Vec<(u64, Vec<String>)>>,
+        HashMap<u64, Vec<(u64, Vec<u64>)>>,
+        HashMap<u64, Vec<(u64, Vec<u64>)>>,
     ),
     Box<dyn std::error::Error>,
 > {
@@ -143,11 +143,12 @@ pub fn compute_relationship_anonymity(
     let (source_mapping, destination_mapping) = compute_source_and_destination_mapping(&trace);
     let (source_message_anonymity_sets, destination_message_anonymity_sets) =
         compute_message_anonymity_sets(&trace, min_delay, max_delay).unwrap();
-    let source_relationship_anonymity_sets = compute_relation_ship_anonymity_sets(
-        source_message_mapping,
-        destination_mapping,
-        source_message_anonymity_sets,
-    )?;
+    let source_relationship_anonymity_sets: HashMap<u64, Vec<(u64, Vec<u64>)>> =
+        compute_relation_ship_anonymity_sets(
+            source_message_mapping,
+            destination_mapping,
+            source_message_anonymity_sets,
+        )?;
     /* Be wary that this yields only useful results if there is just one source per destination */
     let destination_relationship_anonymity_sets = HashMap::new();
     /*compute_relation_ship_anonymity_sets(
@@ -162,13 +163,16 @@ pub fn compute_relationship_anonymity(
 }
 
 pub fn compute_relation_ship_anonymity_sets(
-    message_collection_a: HashMap<String, Vec<u64>>,
-    message_to_name_mapping_b: HashMap<u64, String>,
+    message_collection_a: HashMap<u64, Vec<u64>>,
+    message_to_id_mapping_b: HashMap<u64, u64>,
     message_anonymity_sets_a: HashMap<u64, Vec<u64>>,
-) -> Result<HashMap<String, Vec<(u64, Vec<String>)>>, Box<dyn std::error::Error>> {
+) -> Result<HashMap<u64, Vec<(u64, Vec<u64>)>>, Box<dyn std::error::Error>> {
     let mut relationship_anonymity_sets = HashMap::new();
+    //TODO rayon
+    // IDs für source und destination
+    // Bitvektoren für Anonymity sets
     for (name_a, messages_a) in message_collection_a {
-        let mut anonymity_sets: Vec<(u64, Vec<String>)> = vec![];
+        let mut anonymity_sets: Vec<(u64, Vec<u64>)> = vec![];
         let mut selected_messages: Vec<u64> = vec![];
         let mut current_relationship_anonymity_set = vec![];
         if let Some((first_message, remaining_messages)) = messages_a.split_first() {
@@ -176,7 +180,7 @@ pub fn compute_relation_ship_anonymity_sets(
             let mas = message_anonymity_sets_a.get(first_message).unwrap();
             for message_b in mas {
                 // Determine Destination
-                let name_b = message_to_name_mapping_b
+                let name_b = message_to_id_mapping_b
                     .get(message_b)
                     .ok_or("Name not found")?;
                 // Check if Destination is already in current set
@@ -196,7 +200,7 @@ pub fn compute_relation_ship_anonymity_sets(
                 let mas = message_anonymity_sets_a.get(message_a).unwrap();
                 for message_b in mas {
                     // Determine Destination
-                    let name_b = message_to_name_mapping_b
+                    let name_b = message_to_id_mapping_b
                         .get(message_b)
                         .ok_or("name not found")?;
                     // Check if name is in previous set
@@ -274,19 +278,19 @@ fn compute_event_queue(
             event_type: EventType::AddSourceMessage,
             ts: entry.source_timestamp.add(min_delay),
             m_id: entry.m_id,
-            name: entry.source_name.clone(),
+            id: entry.source_id,
         });
         event_queue.push(ProcessingEvent {
             event_type: EventType::RemoveSourceMessage,
             ts: entry.source_timestamp.add(max_delay),
             m_id: entry.m_id,
-            name: entry.source_name.clone(),
+            id: entry.source_id,
         });
         event_queue.push(ProcessingEvent {
             event_type: EventType::AddDestinationMessage,
             ts: entry.destination_timestamp,
             m_id: entry.m_id,
-            name: entry.destination_name.clone(),
+            id: entry.destination_id,
         });
     }
     event_queue.sort();
@@ -361,8 +365,8 @@ mod tests {
             compute_relationship_anonymity(&network_trace, 1, 100).unwrap();
 
         let mut source_relationship_anonymity_sets_s1 = vec![];
-        let d1_s = String::from("d1");
-        let d2_s = String::from("d2");
+        let d1_s = 1;
+        let d2_s = 2;
         source_relationship_anonymity_sets_s1.push((0, vec![d1_s.clone(), d2_s.clone()]));
         source_relationship_anonymity_sets_s1.push((2, vec![d1_s.clone(), d2_s.clone()]));
         source_relationship_anonymity_sets_s1.push((3, vec![d1_s.clone(), d2_s.clone()]));
@@ -373,10 +377,7 @@ mod tests {
         source_relationship_anonymity_sets_s1.push((12, vec![d1_s.clone()]));
         source_relationship_anonymity_sets_s1.push((14, vec![d1_s.clone()]));
 
-        let sras_s1 = source_relationship_anonymity_sets
-            .get("s1")
-            .unwrap()
-            .clone();
+        let sras_s1 = source_relationship_anonymity_sets.get(&1).unwrap().clone();
         assert_eq!(
             sras_s1.len(),
             source_relationship_anonymity_sets_s1.len(),
@@ -402,8 +403,8 @@ mod tests {
         }
 
         let mut source_relationship_anonymity_sets_s2 = vec![];
-        let d1_s = String::from("d1");
-        let d2_s = String::from("d2");
+        let d1_s = 1;
+        let d2_s = 2;
         source_relationship_anonymity_sets_s2.push((1, vec![d1_s.clone(), d2_s.clone()]));
         source_relationship_anonymity_sets_s2.push((4, vec![d1_s.clone(), d2_s.clone()]));
         source_relationship_anonymity_sets_s2.push((7, vec![d1_s.clone(), d2_s.clone()]));
@@ -412,10 +413,7 @@ mod tests {
         source_relationship_anonymity_sets_s2.push((13, vec![d1_s.clone(), d2_s.clone()]));
         source_relationship_anonymity_sets_s2.push((15, vec![d2_s.clone()]));
 
-        let sras_s2 = source_relationship_anonymity_sets
-            .get("s2")
-            .unwrap()
-            .clone();
+        let sras_s2 = source_relationship_anonymity_sets.get(&2).unwrap().clone();
         assert_eq!(
             sras_s2.len(),
             source_relationship_anonymity_sets_s2.len(),
@@ -441,8 +439,8 @@ mod tests {
         }
 
         let mut destination_relationship_anonymity_sets_d1 = vec![];
-        let s1_s = String::from("s1");
-        let s2_s = String::from("s2");
+        let s1_s = 1;
+        let s2_s = 2;
         destination_relationship_anonymity_sets_d1.push((0, vec![s1_s.clone(), s2_s.clone()]));
         destination_relationship_anonymity_sets_d1.push((2, vec![s1_s.clone()]));
         destination_relationship_anonymity_sets_d1.push((3, vec![s1_s.clone()]));
@@ -454,7 +452,7 @@ mod tests {
         destination_relationship_anonymity_sets_d1.push((14, vec![s1_s.clone()]));
 
         let dras_d1 = destination_relationship_anonymity_sets
-            .get("d1")
+            .get(&1)
             .unwrap()
             .clone();
         assert_eq!(
@@ -482,8 +480,8 @@ mod tests {
         }
 
         let mut destination_relationship_anonymity_sets_d2 = vec![];
-        let s1_s = String::from("s1");
-        let s2_s = String::from("s2");
+        let s1_s = 1;
+        let s2_s = 2;
         destination_relationship_anonymity_sets_d2.push((1, vec![s1_s.clone(), s2_s.clone()]));
         destination_relationship_anonymity_sets_d2.push((4, vec![s1_s.clone(), s2_s.clone()]));
         destination_relationship_anonymity_sets_d2.push((7, vec![s1_s.clone(), s2_s.clone()]));
@@ -493,7 +491,7 @@ mod tests {
         destination_relationship_anonymity_sets_d2.push((15, vec![s1_s.clone(), s2_s.clone()]));
 
         let dras_d2 = destination_relationship_anonymity_sets
-            .get("d2")
+            .get(&2)
             .unwrap()
             .clone();
         assert_eq!(

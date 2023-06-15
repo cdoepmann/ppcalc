@@ -5,14 +5,14 @@ use time::PrimitiveDateTime;
 
 #[derive(Serialize, Deserialize)]
 pub struct SourceTrace {
-    pub source_name: String,
+    pub source_id: u64,
     pub timestamps: Vec<PrimitiveDateTime>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct SourceDestinationMapEntry {
-    source: String,
-    destination: String,
+    source: u64,
+    destination: u64,
 }
 
 pub struct Trace {
@@ -21,17 +21,17 @@ pub struct Trace {
 
 #[derive(Serialize, Deserialize)]
 pub struct PreNetworkTraceEntry {
-    pub source_name: String,
+    pub source_id: u64,
     pub source_timestamp: PrimitiveDateTime,
-    pub destination_name: String,
+    pub destination_id: u64,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct TraceEntry {
     pub m_id: u64,
-    pub source_name: String,
+    pub source_id: u64,
     pub source_timestamp: PrimitiveDateTime,
-    pub destination_name: String,
+    pub destination_id: u64,
     pub destination_timestamp: PrimitiveDateTime,
 }
 
@@ -63,14 +63,14 @@ pub fn read_source_trace_from_file(
 }
 
 pub fn write_source_destination_map(
-    map: &HashMap<String, String>,
+    map: &HashMap<u64, u64>,
     path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut wtr = WriterBuilder::new().from_path(path)?;
     for (key, value) in map.iter() {
         wtr.serialize(SourceDestinationMapEntry {
-            source: key.to_string(),
-            destination: value.to_string(),
+            source: *key,
+            destination: *value,
         })?;
     }
     Ok(())
@@ -78,10 +78,10 @@ pub fn write_source_destination_map(
 
 pub fn read_source_destination_map_from_file(
     path: &str,
-) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
+) -> Result<HashMap<u64, u64>, Box<dyn std::error::Error>> {
     let mut rdr = ReaderBuilder::new().from_path(path)?;
     let mut iter = rdr.deserialize();
-    let mut map: HashMap<String, String> = HashMap::new();
+    let mut map: HashMap<u64, u64> = HashMap::new();
 
     while let Some(result) = iter.next() {
         let entry: SourceDestinationMapEntry = result?;

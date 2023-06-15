@@ -20,7 +20,7 @@ impl<T: Distribution<f64>> Source<T> {
             rng: rand::thread_rng(),
         }
     }
-    pub fn gen_source_trace(&mut self, source_name: String) -> trace::SourceTrace {
+    pub fn gen_source_trace(&mut self, source_id: u64) -> trace::SourceTrace {
         let mut timestamps = vec![];
         let mut time = datetime!(1970-01-01 0:00)
             + time::Duration::milliseconds(
@@ -34,7 +34,7 @@ impl<T: Distribution<f64>> Source<T> {
             timestamps.push(time);
         }
         trace::SourceTrace {
-            source_name,
+            source_id: source_id,
             timestamps,
         }
     }

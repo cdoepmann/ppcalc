@@ -5,26 +5,26 @@ use crate::destination;
 
 #[derive(Serialize, Deserialize)]
 pub struct PlotFormat {
-    pub source_message_anonymity_sets: HashMap<u64, Vec<String>>,
-    pub source_message_map: HashMap<String, Vec<u64>>,
-    pub source_destination_map: HashMap<String, String>,
+    pub source_message_anonymity_sets: HashMap<u64, Vec<u64>>,
+    pub source_message_map: HashMap<u64, Vec<u64>>,
+    pub source_destination_map: HashMap<u64, u64>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct DeanomizationEntry {
-    source: String,
-    destination: String,
+    source: u64,
+    destination: u64,
     remaining_anonymity_set: u64,
     messages: u64,
     deanomized_at: Option<u64>,
 }
 impl PlotFormat {
     pub fn new(
-        source_relationship_anonymity_sets: HashMap<String, Vec<(u64, Vec<String>)>>,
-        source_destination_map: HashMap<String, String>,
+        source_relationship_anonymity_sets: HashMap<u64, Vec<(u64, Vec<u64>)>>,
+        source_destination_map: HashMap<u64, u64>,
     ) -> Self {
-        let mut source_message_map: HashMap<String, Vec<u64>> = HashMap::new();
-        let mut source_message_anonymity_sets: HashMap<u64, Vec<String>> = HashMap::new();
+        let mut source_message_map: HashMap<u64, Vec<u64>> = HashMap::new();
+        let mut source_message_anonymity_sets: HashMap<u64, Vec<u64>> = HashMap::new();
 
         for (source, mas) in source_relationship_anonymity_sets.into_iter() {
             let mut message_list: Vec<u64> = vec![];
@@ -32,7 +32,7 @@ impl PlotFormat {
                 message_list.push(id);
                 source_message_anonymity_sets.insert(id, destinations);
             }
-            source_message_map.insert(source.to_string(), message_list);
+            source_message_map.insert(source, message_list);
         }
         PlotFormat {
             source_message_anonymity_sets,
