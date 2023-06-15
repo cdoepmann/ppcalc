@@ -1,33 +1,34 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
-use crate::destination;
+use ppcalc_metric::{DestinationId, MessageId, SourceId};
 
 #[derive(Serialize, Deserialize)]
 pub struct PlotFormat {
-    pub source_message_anonymity_sets: HashMap<u64, Vec<u64>>,
-    pub source_message_map: HashMap<u64, Vec<u64>>,
-    pub source_destination_map: HashMap<u64, u64>,
+    pub source_message_anonymity_sets: HashMap<MessageId, Vec<DestinationId>>,
+    pub source_message_map: HashMap<SourceId, Vec<MessageId>>,
+    pub source_destination_map: HashMap<SourceId, DestinationId>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct DeanomizationEntry {
-    source: u64,
-    destination: u64,
+    source: SourceId,
+    destination: DestinationId,
     remaining_anonymity_set: u64,
     messages: u64,
     deanomized_at: Option<u64>,
 }
 impl PlotFormat {
     pub fn new(
-        source_relationship_anonymity_sets: HashMap<u64, Vec<(u64, Vec<u64>)>>,
-        source_destination_map: HashMap<u64, u64>,
+        source_relationship_anonymity_sets: HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
+        source_destination_map: HashMap<SourceId, DestinationId>,
     ) -> Self {
-        let mut source_message_map: HashMap<u64, Vec<u64>> = HashMap::new();
-        let mut source_message_anonymity_sets: HashMap<u64, Vec<u64>> = HashMap::new();
+        let mut source_message_map: HashMap<SourceId, Vec<MessageId>> = HashMap::new();
+        let mut source_message_anonymity_sets: HashMap<MessageId, Vec<DestinationId>> =
+            HashMap::new();
 
         for (source, mas) in source_relationship_anonymity_sets.into_iter() {
-            let mut message_list: Vec<u64> = vec![];
+            let mut message_list: Vec<MessageId> = vec![];
             for (id, destinations) in mas.into_iter() {
                 message_list.push(id);
                 source_message_anonymity_sets.insert(id, destinations);
@@ -89,8 +90,8 @@ impl PlotFormat {
         deanonymization_vec
     }
 
-    pub fn anonymity_set_size_over_time(self: &Self) -> BTreeMap<u64, usize> {
-        let mut anonymity_set_difference_map: BTreeMap<u64, usize> = BTreeMap::new();
+    pub fn anonymity_set_size_over_time(self: &Self) -> BTreeMap<MessageId, usize> {
+        let mut anonymity_set_difference_map: BTreeMap<MessageId, usize> = BTreeMap::new();
         let mut total_anonymity_set_size = self
             .source_message_map
             .iter()
@@ -108,7 +109,7 @@ impl PlotFormat {
             messages
                 .iter()
                 .map(|m| (*m, self.source_message_anonymity_sets.get(m).unwrap().len()))
-                .collect::<Vec<(u64, usize)>>()
+                .collect::<Vec<(MessageId, usize)>>()
                 .windows(2)
                 .map(|a| (a[0].0, a[0].1 - a[1].1))
                 .for_each(|(id, diff)| {
@@ -116,7 +117,7 @@ impl PlotFormat {
                 });
             println!("Processed source: {source}");
         }
-        let mut anonymity_set_size_map: BTreeMap<u64, usize> = BTreeMap::new();
+        let mut anonymity_set_size_map: BTreeMap<MessageId, usize> = BTreeMap::new();
         for (id, difference) in anonymity_set_difference_map {
             total_anonymity_set_size -= difference;
             anonymity_set_size_map.insert(id, total_anonymity_set_size);

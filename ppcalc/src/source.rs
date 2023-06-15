@@ -4,6 +4,8 @@ use rand::prelude::*;
 use time::macros::datetime;
 use time::Duration;
 
+use ppcalc_metric::SourceId;
+
 pub struct Source<T: Distribution<f64>> {
     number_of_messages: u64,
     rng: ThreadRng,
@@ -20,7 +22,7 @@ impl<T: Distribution<f64>> Source<T> {
             rng: rand::thread_rng(),
         }
     }
-    pub fn gen_source_trace(&mut self, source_id: u64) -> trace::SourceTrace {
+    pub fn gen_source_trace(&mut self, source_id: SourceId) -> trace::SourceTrace {
         let mut timestamps = vec![];
         let mut time = datetime!(1970-01-01 0:00)
             + time::Duration::milliseconds(

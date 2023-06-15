@@ -10,7 +10,7 @@ use statrs::distribution::Normal;
 use std::{env, fs, path::Path};
 use trace::write_sources;
 
-use ppcalc_metric;
+use ppcalc_metric::SourceId;
 
 fn help() {
     println!("Help is currently not available. Please panic");
@@ -217,12 +217,13 @@ fn main() {
     } else {
         bench.measure("generate sources", BENCH_ENABLED);
         for i in 0..params.num_sources {
+            let source_id = SourceId::new(i);
             let mut source = source::Source::new(
                 message_distr.sample(&mut rng).ceil() as u64,
                 Normal::new(params.source_imd_mean, params.source_imd_dev).unwrap(),
                 Normal::new(params.source_wait_mean, params.source_wait_dev).unwrap(),
             );
-            traces.push(source.gen_source_trace(i));
+            traces.push(source.gen_source_trace(source_id));
         }
         fs::create_dir_all(&source_dir.clone()).unwrap();
         write_sources(&source_path, &traces).unwrap();

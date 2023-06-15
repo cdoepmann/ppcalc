@@ -3,23 +3,25 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, io::BufReader};
 use time::PrimitiveDateTime;
 
+use ppcalc_metric::{DestinationId, SourceId};
+
 #[derive(Serialize, Deserialize)]
 pub struct SourceTrace {
-    pub source_id: u64,
+    pub source_id: SourceId,
     pub timestamps: Vec<PrimitiveDateTime>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct SourceDestinationMapEntry {
-    source: u64,
-    destination: u64,
+    source: SourceId,
+    destination: DestinationId,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct PreNetworkTraceEntry {
-    pub source_id: u64,
+    pub source_id: SourceId,
     pub source_timestamp: PrimitiveDateTime,
-    pub destination_id: u64,
+    pub destination_id: DestinationId,
 }
 
 // impl SourceTrace {
@@ -51,7 +53,7 @@ pub fn read_source_trace_from_file(
 }
 
 pub fn write_source_destination_map(
-    map: &HashMap<u64, u64>,
+    map: &HashMap<SourceId, DestinationId>,
     path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut wtr = WriterBuilder::new().from_path(path)?;

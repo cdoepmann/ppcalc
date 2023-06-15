@@ -18,10 +18,10 @@ pub struct Trace {
 /// and by whom.
 #[derive(Serialize, Deserialize)]
 pub struct TraceEntry {
-    pub m_id: u64,
-    pub source_id: u64,
+    pub m_id: MessageId,
+    pub source_id: SourceId,
     pub source_timestamp: PrimitiveDateTime,
-    pub destination_id: u64,
+    pub destination_id: DestinationId,
     pub destination_timestamp: PrimitiveDateTime,
 }
 
@@ -56,3 +56,41 @@ impl Trace {
     //     Ok(())
     // }
 }
+
+macro_rules! implement_display {
+    ($t:ident) => {
+        impl ::std::fmt::Display for $t {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
+    };
+}
+
+macro_rules! implement_conversions {
+    ($t:ident,$b:ident) => {
+        impl $t {
+            pub fn new(other: $b) -> Self {
+                Self(other)
+            }
+        }
+    };
+}
+
+/// The ID of a message in a [Trace].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct MessageId(u64);
+implement_display!(MessageId);
+implement_conversions!(MessageId, u64);
+
+/// The ID of a source entity in a [Trace].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct SourceId(u64);
+implement_display!(SourceId);
+implement_conversions!(SourceId, u64);
+
+/// The ID of a destination entity in a [Trace].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct DestinationId(u64);
+implement_display!(DestinationId);
+implement_conversions!(DestinationId, u64);
