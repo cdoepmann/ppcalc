@@ -209,60 +209,46 @@ pub fn compute_relation_ship_anonymity_sets(
     let relationship_anonymity_sets = source_message_mapping
         .par_iter()
         .map(|(name_a, messages_a)| {
-            let mut anonymity_sets: Vec<(MessageId, Vec<DestinationId>)> = vec![];
-            let mut selected_messages: Vec<MessageId> = vec![];
-            let mut current_relationship_anonymity_set = vec![];
-            if let Some((first_message, remaining_messages)) = messages_a.split_first() {
-                /* Get Message Anonymity Set */
-                let mas = message_anonymity_sets.get(first_message).unwrap();
-                for message_b in mas {
-                    // Determine Destination
-                    let name_b = destination_mapping
-                        .get(message_b)
-                        .ok_or("Name not found")
-                        .unwrap();
-                    // Check if Destination is already in current set
-                    if current_relationship_anonymity_set.contains(name_b) {
+            let mut anonymity_sets: Vec<(MessageId, Vec<DestinationId>)> = Vec::new();
+            let mut selected_messages: Vec<MessageId> = Vec::new();
+
+            for source_msg in messages_a {
+                let mut current_relationship_anonymity_set = Vec::new();
+                let previous_dest_anonymity_set = anonymity_sets.last().map(|(_, x)| x);
+
+                let msg_anon_set = message_anonymity_sets.get(source_msg).unwrap();
+
+                // "candidate" messages in this source_msg's anonymity set.
+                // We here calculate the anonymity set of *destinations* for source_msg
+                for candidate in msg_anon_set {
+                    let dest = destination_mapping.get(candidate).expect("name not found");
+
+                    // check if name is in previous set (we do not want to grow the set)
+                    if let Some(previous_set) = previous_dest_anonymity_set {
+                        if !previous_set.contains(dest) {
+                            continue;
+                        }
+                    }
+
+                    // check if destination is already in current anonymity set
+                    if current_relationship_anonymity_set.contains(dest) {
                         continue;
                     }
-                    // Check if this message has already been "used" in a previous round
-                    if !selected_messages.contains(message_b) {
-                        selected_messages.push(*message_b);
-                        current_relationship_anonymity_set.push(name_b.clone());
-                    }
-                }
-                anonymity_sets.push((*first_message, current_relationship_anonymity_set));
 
-                for message_a in remaining_messages {
-                    let mut current_relationship_anonymity_set = vec![];
-                    let mas = message_anonymity_sets.get(message_a).unwrap();
-                    for message_b in mas {
-                        // Determine Destination
-                        let name_b = destination_mapping
-                            .get(message_b)
-                            .ok_or("name not found")
-                            .unwrap();
-                        // Check if name is in previous set
-                        let (_, previous_relationship_anonymity_set) = anonymity_sets
-                            .last()
-                            .ok_or("There is no last anonymity set")
-                            .unwrap();
-                        if !previous_relationship_anonymity_set.contains(name_b) {
-                            continue;
-                        }
-                        // Check if name is already in current set
-                        if current_relationship_anonymity_set.contains(name_b) {
-                            continue;
-                        }
-                        // Check if this message has already been "used" in a previous round
-                        if !selected_messages.contains(message_b) {
-                            selected_messages.push(*message_b);
-                            current_relationship_anonymity_set.push(name_b.clone());
-                        }
+                    // check if this message has already been "used" in a previous round
+                    if selected_messages.contains(candidate) {
+                        continue;
                     }
-                    anonymity_sets.push((*message_a, current_relationship_anonymity_set));
+
+                    // remember the destination and that we used the message
+                    selected_messages.push(*candidate);
+                    current_relationship_anonymity_set.push(dest.clone());
                 }
+
+                // remember this message's anonymity set of destinations
+                anonymity_sets.push((*source_msg, current_relationship_anonymity_set));
             }
+
             (*name_a, anonymity_sets)
         })
         .collect();
