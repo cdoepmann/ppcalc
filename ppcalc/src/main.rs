@@ -285,8 +285,8 @@ fn main() {
         )
         .unwrap();
 
-    // bench.measure("plot", BENCH_ENABLED);
-    // let plot = plot::PlotFormat::new(source_relationship_anonymity_sets, source_destination_map);
+    bench.measure("plot", BENCH_ENABLED);
+    let plot = plot::PlotFormat::new(source_relationship_anonymity_sets, source_destination_map);
     /*
     /* for (source, iterative_anonymity_sets) in source_relationship_anonymity_sets.iter() {
             println!("{}", source);
@@ -308,12 +308,12 @@ fn main() {
     */
     bench.measure("deanomization", BENCH_ENABLED);
     let deanomization_path = String::from(&working_dir) + "/deanomization.json";
-    // let deanomization_vec = plot.deanonymized_users_over_time();
-    // std::fs::write(
-    //     deanomization_path,
-    //     serde_json::to_string_pretty(&deanomization_vec).unwrap(),
-    // )
-    // .unwrap();
+    let deanomization_vec = plot.deanonymized_users_over_time();
+    std::fs::write(
+        deanomization_path,
+        serde_json::to_string_pretty(&deanomization_vec).unwrap(),
+    )
+    .unwrap();
 
     bench.measure("parameters", BENCH_ENABLED);
     let parameter_path = String::from(&working_dir) + "parameters.json";
