@@ -1,12 +1,13 @@
 use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap},
     fmt::Display,
     ops::Add,
     vec,
 };
 
+use fxhash::FxHashSet as HashSet;
 use time::PrimitiveDateTime;
 
 use crate::bench;
@@ -211,10 +212,10 @@ pub fn compute_relation_ship_anonymity_sets(
         .par_iter()
         .map(|(name_a, messages_a)| {
             let mut anonymity_sets: Vec<(MessageId, HashSet<DestinationId>)> = Vec::new();
-            let mut selected_messages: HashSet<MessageId> = HashSet::new();
+            let mut selected_messages: HashSet<MessageId> = HashSet::default();
 
             for source_msg in messages_a {
-                let mut current_relationship_anonymity_set = HashSet::new();
+                let mut current_relationship_anonymity_set = HashSet::default();
                 let previous_dest_anonymity_set = anonymity_sets.last().map(|(_, x)| x);
 
                 let msg_anon_set = message_anonymity_sets.get(source_msg).unwrap();
