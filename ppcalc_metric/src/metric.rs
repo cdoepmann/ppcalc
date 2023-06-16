@@ -200,13 +200,13 @@ pub fn compute_relationship_anonymity(
 }
 
 pub fn compute_relation_ship_anonymity_sets(
-    message_collection_a: HashMap<SourceId, Vec<MessageId>>,
-    message_to_id_mapping_b: HashMap<MessageId, DestinationId>,
-    message_anonymity_sets_a: HashMap<MessageId, Vec<MessageId>>,
+    source_message_mapping: HashMap<SourceId, Vec<MessageId>>,
+    destination_mapping: HashMap<MessageId, DestinationId>,
+    message_anonymity_sets: HashMap<MessageId, Vec<MessageId>>,
 ) -> Result<HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>, Box<dyn std::error::Error>> {
     //TODO rayon
     // Bitvektoren für Anonymity sets
-    let relationship_anonymity_sets = message_collection_a
+    let relationship_anonymity_sets = source_message_mapping
         .par_iter()
         .map(|(name_a, messages_a)| {
             let mut anonymity_sets: Vec<(MessageId, Vec<DestinationId>)> = vec![];
@@ -214,10 +214,10 @@ pub fn compute_relation_ship_anonymity_sets(
             let mut current_relationship_anonymity_set = vec![];
             if let Some((first_message, remaining_messages)) = messages_a.split_first() {
                 /* Get Message Anonymity Set */
-                let mas = message_anonymity_sets_a.get(first_message).unwrap();
+                let mas = message_anonymity_sets.get(first_message).unwrap();
                 for message_b in mas {
                     // Determine Destination
-                    let name_b = message_to_id_mapping_b
+                    let name_b = destination_mapping
                         .get(message_b)
                         .ok_or("Name not found")
                         .unwrap();
@@ -235,10 +235,10 @@ pub fn compute_relation_ship_anonymity_sets(
 
                 for message_a in remaining_messages {
                     let mut current_relationship_anonymity_set = vec![];
-                    let mas = message_anonymity_sets_a.get(message_a).unwrap();
+                    let mas = message_anonymity_sets.get(message_a).unwrap();
                     for message_b in mas {
                         // Determine Destination
-                        let name_b = message_to_id_mapping_b
+                        let name_b = destination_mapping
                             .get(message_b)
                             .ok_or("name not found")
                             .unwrap();
