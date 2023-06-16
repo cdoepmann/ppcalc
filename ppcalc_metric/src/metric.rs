@@ -9,6 +9,7 @@ use std::{
 
 use time::PrimitiveDateTime;
 
+use crate::bench;
 use crate::trace::{DestinationId, MessageId, SourceId, Trace};
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -164,11 +165,19 @@ pub fn compute_relationship_anonymity(
     ),
     Box<dyn std::error::Error>,
 > {
+    let mut bench = bench::Bench::new();
+    let BENCH_ENABLED = true;
+
+    bench.measure("preliminaries for metric calculation", BENCH_ENABLED);
     let (source_message_mapping, destination_message_mapping) =
         compute_source_and_destination_message_mapping(&trace);
     let (source_mapping, destination_mapping) = compute_source_and_destination_mapping(&trace);
+
+    bench.measure("source anonymity sets", BENCH_ENABLED);
     let (source_message_anonymity_sets, destination_message_anonymity_sets) =
         compute_message_anonymity_sets(&trace, min_delay, max_delay).unwrap();
+
+    bench.measure("source relationship anonymity sets", BENCH_ENABLED);
     let source_relationship_anonymity_sets: HashMap<
         SourceId,
         Vec<(MessageId, Vec<DestinationId>)>,

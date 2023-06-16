@@ -276,15 +276,7 @@ fn main() {
         .unwrap();
     let network_trace = ppcalc_metric::Trace::from_csv("./sim/network_trace.csv").unwrap();
     */
-    bench.measure("source anonymity sets", BENCH_ENABLED);
-    let (source_anonymity_sets, destination_anonymity_sets) =
-        ppcalc_metric::compute_message_anonymity_sets(
-            &network_trace,
-            params.network_delay_min,
-            params.network_delay_max,
-        )
-        .unwrap();
-    bench.measure("source relationship anonymity sets", BENCH_ENABLED);
+    bench.measure("anonymity metric calculation", BENCH_ENABLED);
     let (source_relationship_anonymity_sets, _destination_relationship_anonymity_sets) =
         ppcalc_metric::compute_relationship_anonymity(
             &network_trace,

@@ -9,3 +9,5 @@ pub use metric::{
     compute_message_anonymity_sets, compute_relation_ship_anonymity_sets,
     compute_relationship_anonymity,
 };
+
+mod bench;
