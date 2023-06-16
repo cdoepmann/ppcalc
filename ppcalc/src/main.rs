@@ -286,7 +286,23 @@ fn main() {
         .unwrap();
 
     bench.measure("plot", BENCH_ENABLED);
-    let plot = plot::PlotFormat::new(source_relationship_anonymity_sets, source_destination_map);
+    let plot = plot::PlotFormat::new(
+        // need the anonymity sets as Vec here
+        source_relationship_anonymity_sets
+            .into_iter()
+            .map(|(k, v)| {
+                let v_new: Vec<_> = v
+                    .into_iter()
+                    .map(|(msg, anon)| {
+                        let anon_new: Vec<_> = anon.into_iter().collect();
+                        (msg, anon_new)
+                    })
+                    .collect();
+                (k, v_new)
+            })
+            .collect(),
+        source_destination_map,
+    );
     /*
     /* for (source, iterative_anonymity_sets) in source_relationship_anonymity_sets.iter() {
             println!("{}", source);

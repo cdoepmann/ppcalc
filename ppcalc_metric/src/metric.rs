@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     fmt::Display,
     ops::Add,
     vec,
@@ -160,7 +160,7 @@ pub fn compute_relationship_anonymity(
     max_delay: i64,
 ) -> Result<
     (
-        HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
+        HashMap<SourceId, Vec<(MessageId, HashSet<DestinationId>)>>,
         HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
     ),
     Box<dyn std::error::Error>,
@@ -180,7 +180,7 @@ pub fn compute_relationship_anonymity(
     bench.measure("source relationship anonymity sets", BENCH_ENABLED);
     let source_relationship_anonymity_sets: HashMap<
         SourceId,
-        Vec<(MessageId, Vec<DestinationId>)>,
+        Vec<(MessageId, HashSet<DestinationId>)>,
     > = compute_relation_ship_anonymity_sets(
         source_message_mapping,
         destination_mapping,
@@ -203,17 +203,18 @@ pub fn compute_relation_ship_anonymity_sets(
     source_message_mapping: HashMap<SourceId, Vec<MessageId>>,
     destination_mapping: HashMap<MessageId, DestinationId>,
     message_anonymity_sets: HashMap<MessageId, Vec<MessageId>>,
-) -> Result<HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>, Box<dyn std::error::Error>> {
+) -> Result<HashMap<SourceId, Vec<(MessageId, HashSet<DestinationId>)>>, Box<dyn std::error::Error>>
+{
     //TODO rayon
     // Bitvektoren für Anonymity sets
     let relationship_anonymity_sets = source_message_mapping
         .par_iter()
         .map(|(name_a, messages_a)| {
-            let mut anonymity_sets: Vec<(MessageId, Vec<DestinationId>)> = Vec::new();
-            let mut selected_messages: Vec<MessageId> = Vec::new();
+            let mut anonymity_sets: Vec<(MessageId, HashSet<DestinationId>)> = Vec::new();
+            let mut selected_messages: HashSet<MessageId> = HashSet::new();
 
             for source_msg in messages_a {
-                let mut current_relationship_anonymity_set = Vec::new();
+                let mut current_relationship_anonymity_set = HashSet::new();
                 let previous_dest_anonymity_set = anonymity_sets.last().map(|(_, x)| x);
 
                 let msg_anon_set = message_anonymity_sets.get(source_msg).unwrap();
@@ -241,8 +242,8 @@ pub fn compute_relation_ship_anonymity_sets(
                     }
 
                     // remember the destination and that we used the message
-                    selected_messages.push(*candidate);
-                    current_relationship_anonymity_set.push(dest.clone());
+                    selected_messages.insert(*candidate);
+                    current_relationship_anonymity_set.insert(dest.clone());
                 }
 
                 // remember this message's anonymity set of destinations
@@ -447,7 +448,7 @@ mod tests {
         let mut r_iter = sras_s1.into_iter();
         let mut e_iter = source_relationship_anonymity_sets_s1.into_iter();
         loop {
-            let (r_id, mut r_as) = match r_iter.next() {
+            let (r_id, r_as) = match r_iter.next() {
                 Some(item) => item,
                 None => break,
             };
@@ -457,6 +458,7 @@ mod tests {
                     panic!("Real has entries left, expected doesn't. This should fail earlier.");
                 }
             };
+            let mut r_as: Vec<_> = r_as.into_iter().collect();
             r_as.sort();
             e_as.sort();
             assert_eq!(r_id, e_id, "Real id, was not the same as expected id");
@@ -492,7 +494,7 @@ mod tests {
         let mut r_iter = sras_s2.into_iter();
         let mut e_iter = source_relationship_anonymity_sets_s2.into_iter();
         loop {
-            let (r_id, mut r_as) = match r_iter.next() {
+            let (r_id, r_as) = match r_iter.next() {
                 Some(item) => item,
                 None => break,
             };
@@ -502,6 +504,7 @@ mod tests {
                     panic!("Real has entries left, expected doesn't. This should fail earlier.");
                 }
             };
+            let mut r_as: Vec<_> = r_as.into_iter().collect();
             r_as.sort();
             e_as.sort();
             assert_eq!(r_id, e_id, "Real id, was not the same as expected id");
