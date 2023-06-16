@@ -161,7 +161,7 @@ pub fn compute_relationship_anonymity(
     max_delay: i64,
 ) -> Result<
     (
-        HashMap<SourceId, Vec<(MessageId, HashSet<DestinationId>)>>,
+        HashMap<SourceId, Vec<(MessageId, usize)>>,
         HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
     ),
     Box<dyn std::error::Error>,
@@ -179,14 +179,12 @@ pub fn compute_relationship_anonymity(
         compute_message_anonymity_sets(&trace, min_delay, max_delay).unwrap();
 
     bench.measure("source relationship anonymity sets", BENCH_ENABLED);
-    let source_relationship_anonymity_sets: HashMap<
-        SourceId,
-        Vec<(MessageId, HashSet<DestinationId>)>,
-    > = compute_relation_ship_anonymity_sets(
-        source_message_mapping,
-        destination_mapping,
-        source_message_anonymity_sets,
-    )?;
+    let source_relationship_anonymity_sets: HashMap<SourceId, Vec<(MessageId, usize)>> =
+        compute_relation_ship_anonymity_sets(
+            source_message_mapping,
+            destination_mapping,
+            source_message_anonymity_sets,
+        )?;
     /* Be wary that this yields only useful results if there is just one source per destination */
     let destination_relationship_anonymity_sets = HashMap::new();
     /*compute_relation_ship_anonymity_sets(
@@ -204,19 +202,19 @@ pub fn compute_relation_ship_anonymity_sets(
     source_message_mapping: HashMap<SourceId, Vec<MessageId>>,
     destination_mapping: HashMap<MessageId, DestinationId>,
     message_anonymity_sets: HashMap<MessageId, Vec<MessageId>>,
-) -> Result<HashMap<SourceId, Vec<(MessageId, HashSet<DestinationId>)>>, Box<dyn std::error::Error>>
-{
+) -> Result<HashMap<SourceId, Vec<(MessageId, usize)>>, Box<dyn std::error::Error>> {
     //TODO rayon
     // Bitvektoren für Anonymity sets
     let relationship_anonymity_sets = source_message_mapping
         .par_iter()
         .map(|(name_a, messages_a)| {
-            let mut anonymity_sets: Vec<(MessageId, HashSet<DestinationId>)> = Vec::new();
+            let mut anonymity_sets: Vec<(MessageId, usize)> = Vec::new();
             let mut selected_messages: HashSet<MessageId> = HashSet::default();
+
+            let mut previous_dest_anonymity_set: Option<HashSet<DestinationId>> = None;
 
             for source_msg in messages_a {
                 let mut current_relationship_anonymity_set = HashSet::default();
-                let previous_dest_anonymity_set = anonymity_sets.last().map(|(_, x)| x);
 
                 let msg_anon_set = message_anonymity_sets.get(source_msg).unwrap();
 
@@ -226,7 +224,7 @@ pub fn compute_relation_ship_anonymity_sets(
                     let dest = destination_mapping.get(candidate).expect("name not found");
 
                     // check if name is in previous set (we do not want to grow the set)
-                    if let Some(previous_set) = previous_dest_anonymity_set {
+                    if let Some(previous_set) = &previous_dest_anonymity_set {
                         if !previous_set.contains(dest) {
                             continue;
                         }
@@ -248,7 +246,9 @@ pub fn compute_relation_ship_anonymity_sets(
                 }
 
                 // remember this message's anonymity set of destinations
-                anonymity_sets.push((*source_msg, current_relationship_anonymity_set));
+                anonymity_sets.push((*source_msg, current_relationship_anonymity_set.len()));
+
+                previous_dest_anonymity_set = Some(current_relationship_anonymity_set);
             }
 
             (*name_a, anonymity_sets)
@@ -459,11 +459,13 @@ mod tests {
                     panic!("Real has entries left, expected doesn't. This should fail earlier.");
                 }
             };
-            let mut r_as: Vec<_> = r_as.into_iter().collect();
-            r_as.sort();
-            e_as.sort();
             assert_eq!(r_id, e_id, "Real id, was not the same as expected id");
-            assert_eq!(r_as, e_as, "Anonymity sets differ at id: {}", e_id);
+            assert_eq!(
+                r_as,
+                e_as.len(),
+                "Anonymity sets differ in size at id: {}",
+                e_id
+            );
         }
 
         let mut source_relationship_anonymity_sets_s2 = vec![];
@@ -505,11 +507,13 @@ mod tests {
                     panic!("Real has entries left, expected doesn't. This should fail earlier.");
                 }
             };
-            let mut r_as: Vec<_> = r_as.into_iter().collect();
-            r_as.sort();
-            e_as.sort();
             assert_eq!(r_id, e_id, "Real id, was not the same as expected id");
-            assert_eq!(r_as, e_as, "Anonymity sets differ at id: {}", e_id);
+            assert_eq!(
+                r_as,
+                e_as.len(),
+                "Anonymity sets differ in size at id: {}",
+                e_id
+            );
         }
 
         //     let mut destination_relationship_anonymity_sets_d1 = vec![];
