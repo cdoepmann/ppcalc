@@ -8,7 +8,7 @@ use std::{
 };
 
 use fxhash::FxHashSet as HashSet;
-use time::PrimitiveDateTime;
+use time::{Duration, PrimitiveDateTime};
 
 use crate::bench;
 use crate::trace::{DestinationId, MessageId, SourceId, Trace};
@@ -97,8 +97,8 @@ fn split_by_destination(
 
 pub fn compute_message_anonymity_sets(
     trace: &Trace,
-    min_delay: i64,
-    max_delay: i64,
+    min_delay: Duration,
+    max_delay: Duration,
     destination_mapping: &HashMap<MessageId, DestinationId>,
 ) -> Vec<(
     SourceId,
@@ -255,8 +255,8 @@ fn compute_source_and_destination_message_mapping(
 
 pub fn compute_relationship_anonymity(
     trace: &Trace,
-    min_delay: i64,
-    max_delay: i64,
+    min_delay: Duration,
+    max_delay: Duration,
 ) -> Result<
     (
         HashMap<SourceId, Vec<(MessageId, usize)>>,
@@ -411,13 +411,12 @@ fn compute_relationship_anonymity_intersection(
 /// Compute the event queues from messages entering and leaving the network, per source.
 fn compute_event_queues(
     trace: &Trace,
-    min_delay: i64,
-    max_delay: i64,
+    min_delay: Duration,
+    max_delay: Duration,
 ) -> HashMap<SourceId, Vec<ProcessingEvent>> {
     let mut result: HashMap<SourceId, Vec<ProcessingEvent>> = HashMap::default();
 
-    let min_delay = time::Duration::milliseconds(min_delay);
-    let max_delay = time::Duration::milliseconds(max_delay) + time::Duration::nanoseconds(1); // TODO
+    let max_delay = max_delay + time::Duration::nanoseconds(1); // TODO
 
     for entry in trace.entries.iter() {
         let event_queue = result.entry(entry.source_id).or_default();

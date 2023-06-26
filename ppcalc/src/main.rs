@@ -8,6 +8,7 @@ use rand_distr::Distribution;
 use serde::{Deserialize, Serialize};
 use statrs::distribution::Normal;
 use std::{env, fs, path::Path};
+use time::Duration;
 use trace::write_sources;
 
 use ppcalc_metric::SourceId;
@@ -280,8 +281,8 @@ fn main() {
     let (source_relationship_anonymity_sets, _destination_relationship_anonymity_sets) =
         ppcalc_metric::compute_relationship_anonymity(
             &network_trace,
-            params.network_delay_min,
-            params.network_delay_max,
+            Duration::milliseconds(params.network_delay_min),
+            Duration::milliseconds(params.network_delay_max),
         )
         .unwrap();
 
