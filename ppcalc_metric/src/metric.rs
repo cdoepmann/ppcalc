@@ -414,7 +414,14 @@ fn compute_event_queues(
     min_delay: Duration,
     max_delay: Duration,
 ) -> HashMap<SourceId, Vec<ProcessingEvent>> {
-    let mut result: HashMap<SourceId, Vec<ProcessingEvent>> = HashMap::default();
+    // collect all the sources first and create a hash map entry for each
+    // we do this separately first in order to have a complete list of sources
+    // later when creating the destination message events
+    let mut result: HashMap<SourceId, Vec<ProcessingEvent>> = trace
+        .entries
+        .iter()
+        .map(|entry| (entry.source_id, Vec::new()))
+        .collect();
 
     let max_delay = max_delay + time::Duration::nanoseconds(1); // TODO
 
@@ -431,11 +438,15 @@ fn compute_event_queues(
             ts: entry.source_timestamp.add(max_delay),
             m_id: entry.m_id,
         });
-        event_queue.push(ProcessingEvent {
-            event_type: EventTypeAndId::AddDestinationMessage(entry.destination_id),
-            ts: entry.destination_timestamp,
-            m_id: entry.m_id,
-        });
+
+        // The occurence of a destination messages is relevant for all sources.
+        for event_queue in result.values_mut() {
+            event_queue.push(ProcessingEvent {
+                event_type: EventTypeAndId::AddDestinationMessage(entry.destination_id),
+                ts: entry.destination_timestamp,
+                m_id: entry.m_id,
+            });
+        }
     }
 
     for events in result.values_mut() {
