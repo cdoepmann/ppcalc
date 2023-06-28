@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use std::cmp::Ordering;
+use std::cmp::{min, Ordering};
 use std::{collections::hash_map::Entry, fmt::Display, ops::Add};
 
 use fxhash::FxHashMap as HashMap;
@@ -342,7 +342,7 @@ pub fn compute_relation_ship_anonymity_sets(
                         Some(previous_candidates) => previous_candidates,
                     };
 
-                    let candidates = added + from_previous_message;
+                    let candidates = added + min(*from_previous_message, overlap);
 
                     // For this destination to remain a candidate, it must have at least one message
                     if candidates == 0 {
