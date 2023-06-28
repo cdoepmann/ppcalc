@@ -257,7 +257,7 @@ pub fn compute_relationship_anonymity(
     max_delay: Duration,
 ) -> Result<
     (
-        HashMap<SourceId, Vec<(MessageId, usize)>>,
+        HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
         HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
     ),
     Box<dyn std::error::Error>,
@@ -280,8 +280,10 @@ pub fn compute_relationship_anonymity(
     );
 
     bench.measure("source relationship anonymity sets", BENCH_ENABLED);
-    let source_relationship_anonymity_sets: HashMap<SourceId, Vec<(MessageId, usize)>> =
-        compute_relation_ship_anonymity_sets(source_message_anonymity_sets);
+    let source_relationship_anonymity_sets: HashMap<
+        SourceId,
+        Vec<(MessageId, Vec<DestinationId>)>,
+    > = compute_relation_ship_anonymity_sets(source_message_anonymity_sets);
     /* Be wary that this yields only useful results if there is just one source per destination */
     let destination_relationship_anonymity_sets = HashMap::default();
     /*compute_relation_ship_anonymity_sets(
@@ -300,7 +302,7 @@ pub fn compute_relation_ship_anonymity_sets(
         SourceId,
         Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>,
     >,
-) -> HashMap<SourceId, Vec<(MessageId, usize)>> {
+) -> HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>> {
     //TODO rayon
     // Bitvektoren für Anonymity sets
     let relationship_anonymity_sets = message_anonymity_sets
@@ -360,7 +362,10 @@ pub fn compute_relation_ship_anonymity_sets(
 
                 // The destination anonymity set after this message is now ready.
                 // For now, we only output its size.
-                anon_set_sizes.push((source_message, destination_candidates.len()));
+                anon_set_sizes.push((
+                    source_message,
+                    destination_candidates.keys().cloned().collect(),
+                ));
 
                 // remember the remaining number of message candidates for each destination
                 prev_destination_candidates = destination_candidates;
