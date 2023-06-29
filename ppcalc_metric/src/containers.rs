@@ -91,6 +91,7 @@ impl MessageSet {
                     None => {
                         // left finished
                         added += 1;
+                        left_exhausted = true;
                         continue 'outer;
                     }
                     Some(left_val) => match left_val.cmp(right_val) {
