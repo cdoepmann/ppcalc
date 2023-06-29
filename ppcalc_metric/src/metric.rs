@@ -1,9 +1,10 @@
-use rayon::prelude::*;
-use std::cmp::{min, Ordering};
-use std::{collections::hash_map::Entry, fmt::Display, ops::Add};
-
 use fxhash::FxHashMap as HashMap;
 use fxhash::FxHashSet as HashSet;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::cmp::{min, Ordering};
+use std::collections::BTreeMap;
+use std::{collections::hash_map::Entry, fmt::Display, fs::File, io::BufReader, ops::Add};
 use time::{Duration, PrimitiveDateTime};
 
 use crate::bench;
@@ -137,13 +138,18 @@ pub fn compute_message_anonymity_sets(
                 // this at their destination.
                 let this_message_anon_set = current_message_anon_sets.remove(&event.m_id).unwrap();
 
-
                 // We now compute this anonymity set's delta from the last anonymity set
                 // (per destination) and aggregate it to the numbers of added and shared messages.
 
                 // split the anonymity set by destination
-                let this_message_anon_set =
-                    split_by_destination(this_message_anon_set, destination_mapping);
+                let this_message_anon_set: std::collections::HashMap<
+                    DestinationId,
+                    std::collections::HashSet<
+                        MessageId,
+                        std::hash::BuildHasherDefault<fxhash::FxHasher>,
+                    >,
+                    std::hash::BuildHasherDefault<fxhash::FxHasher>,
+                > = split_by_destination(this_message_anon_set, destination_mapping);
 
                 let source = source_mapping.get(&event.m_id).unwrap();
 
@@ -453,9 +459,119 @@ fn compute_event_queues(
     event_queue
 }
 
+pub fn write_source_anon_set(
+    map: &HashMap<SourceId, Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>>,
+    path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let wtr = std::fs::File::create(path)?;
+    serde_json::to_writer(&wtr, map)?;
+    Ok(())
+}
+pub fn write_source_message_anon_set(
+    map: &BTreeMap<MessageId, Vec<DestinationId>>,
+    path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let wtr = std::fs::File::create(path)?;
+    serde_json::to_writer(&wtr, map)?;
+    Ok(())
+}
+
+pub fn read_source_anon_set(
+    path: &str,
+) -> Result<
+    HashMap<SourceId, Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>>,
+    Box<dyn std::error::Error>,
+> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+
+    // Read the JSON contents of the file as an instance of `User`.
+    let message_anon_set = serde_json::from_reader(reader)?;
+    Ok(message_anon_set)
+}
+
+pub fn read_sras(
+    path: &str,
+) -> Result<HashMap<MessageId, Vec<DestinationId>>, Box<dyn std::error::Error>> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+
+    // Read the JSON contents of the file as an instance of `User`.
+    let sras = serde_json::from_reader(reader)?;
+    Ok(sras)
+}
+
+/* TODO to improve debugging, we might want to return WHERE exactly they differ */
+fn compare_source_anonymity_sets(
+    sas1: HashMap<SourceId, Vec<(MessageId, &HashMap<DestinationId, (usize, usize)>)>>,
+    sas2: &HashMap<SourceId, Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for (source_id, messages1) in sas1.iter() {
+        let mut messages2 = sas2
+            .get(source_id)
+            .ok_or(Err::<(), &str>("{source_id} not in sas2"));
+
+        let mut messages1_iter = messages1.iter();
+        let mut messages2_iter = messages2.iter();
+
+        while let (Some(m1), Some(m2)) = (messages1_iter.next(), messages2_iter.next()) {
+            /* TODO  */
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::metric::*;
+    /*
+    #[test]
+    fn simple_example_validation() {
+
+        let min_delay = Duration::milliseconds(1);
+        let max_delay = Duration::milliseconds(100);
+        let network_trace =
+            Trace::from_csv("./test/simple_test_1/simple_network_trace.csv").unwrap();
+        /*let (source_mapping, destination_mapping) = compute_source_and_destination_mapping(&network_trace);
+        let source_anonymity_set =
+            compute_message_anonymity_sets(&network_trace, min_delay, max_delay, &source_mapping, &destination_mapping);
+        write_source_anon_set(&source_anonymity_set, "./source_anonymity_set.json");
+        let expected_source_anonymity_set = read_source_anon_set("./test/simple_test_1/source_anonymity_set.json");*/
+        // TODO compare_source_anonymity_sets()
+        let (source_relationship_anonymity_set, _) =
+            compute_relationship_anonymity(&network_trace, min_delay, max_delay).unwrap();
+        let mut sras_map = BTreeMap::default();
+        for (_s_id, sas) in source_relationship_anonymity_set {
+            for (m_id, d_ids) in sas {
+                sras_map.insert(m_id, d_ids);
+            }
+        }
+        write_source_message_anon_set(&sras_map, "./sras.json");
+    }*/
+    fn execute_test(min_delay: i64, max_delay: i64, path: &str) {
+        let min_delay = Duration::milliseconds(min_delay);
+        let max_delay = Duration::milliseconds(max_delay);
+        let trace_path = String::from(path) + "/network_trace.csv";
+        let sras_path = String::from(path) + "/sras.json";
+        let network_trace = Trace::from_csv(trace_path).unwrap();
+        let expected_sras = read_sras(&sras_path).unwrap();
+        let (sras, _) =
+            compute_relationship_anonymity(&network_trace, min_delay, max_delay).unwrap();
+        let mut n_sras = HashMap::default();
+        for (_s_id, sas) in sras {
+            for (m_id, d_ids) in sas {
+                n_sras.insert(m_id, d_ids);
+            }
+        }
+        assert!(n_sras == expected_sras);
+    }
+    #[test]
+    fn simple_test_1() {
+        execute_test(1, 100, "./test/simple_test_1/");
+    }
+    /*
     #[test]
     fn simple_example_validation() {
         let network_trace = Trace::from_csv("./test/simple_network_trace.csv").unwrap();
@@ -726,4 +842,5 @@ mod tests {
         //         assert_eq!(r_as, e_as, "Anonymity sets differ at id: {}", e_id);
         //     }
     }
+    */
 }
