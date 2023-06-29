@@ -7,6 +7,7 @@ use fxhash::FxHashSet as HashSet;
 use time::{Duration, PrimitiveDateTime};
 
 use crate::bench;
+use crate::containers::MessageSet;
 use crate::trace::{DestinationId, MessageId, SourceId, Trace};
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -69,26 +70,16 @@ impl PartialOrd for ProcessingEvent {
 /// Returns a pair of `usize`s, with the following meaning:
 /// 1. the number of _newly added_ messages from `set1` to `set2`
 /// 2. the number of _shared_ messages (overlap) between the two sets
-fn relative_set_distance(set1: &HashSet<MessageId>, set2: &HashSet<MessageId>) -> (usize, usize) {
-    (
-        set2.difference(&set1).count(),
-        set2.intersection(&set1).count(),
-    )
+fn relative_set_distance(set1: &MessageSet, set2: &MessageSet) -> (usize, usize) {
+    set1.distance(set2)
 }
 
 /// Split an anonymity set by the destination of its messages
 fn split_by_destination(
-    set: HashSet<MessageId>,
+    set: MessageSet,
     destination_mapping: &HashMap<MessageId, DestinationId>,
-) -> HashMap<DestinationId, HashSet<MessageId>> {
-    let mut res: HashMap<DestinationId, HashSet<MessageId>> = HashMap::default();
-
-    for message in set {
-        let destination = destination_mapping.get(&message).unwrap();
-        res.entry(*destination).or_default().insert(message);
-    }
-
-    res
+) -> HashMap<DestinationId, MessageSet> {
+    set.split_by(|message| *destination_mapping.get(&message).unwrap())
 }
 
 pub fn compute_message_anonymity_sets(
@@ -115,11 +106,11 @@ pub fn compute_message_anonymity_sets(
         Vec::new();
 
     // the anonymity set of each source message (that is still in the window)
-    let mut current_message_anon_sets: HashMap<MessageId, HashSet<MessageId>> = HashMap::default();
+    let mut current_message_anon_sets: HashMap<MessageId, MessageSet> = HashMap::default();
 
     // also remember the last one per source, so we can compute the relative difference
     // (the previous one is already split by destination)
-    let mut last_message_anon_set: HashMap<SourceId, HashMap<DestinationId, HashSet<MessageId>>> =
+    let mut last_message_anon_set: HashMap<SourceId, HashMap<DestinationId, MessageSet>> =
         HashMap::default();
 
     // // keep track of the source messages in the current window
@@ -129,14 +120,13 @@ pub fn compute_message_anonymity_sets(
         match event.event_type {
             EventTypeAndId::AddSourceMessage(_) => {
                 // A source message was first observed
-                current_message_anon_sets.insert(event.m_id, HashSet::default());
+                current_message_anon_sets.insert(event.m_id, MessageSet::new());
             }
             EventTypeAndId::RemoveSourceMessage(_) => {
                 // The "window" of a source message has expired. Consequently,
                 // it can be differentiated from messages arriving later than
                 // this at their destination.
                 let this_message_anon_set = current_message_anon_sets.remove(&event.m_id).unwrap();
-
 
                 // We now compute this anonymity set's delta from the last anonymity set
                 // (per destination) and aggregate it to the numbers of added and shared messages.
@@ -169,7 +159,7 @@ pub fn compute_message_anonymity_sets(
                                         match previous.get(&dest) {
                                             None => (messages.len(), 0),
                                             Some(previous_messages) => {
-                                                relative_set_distance(previous_messages, &messages)
+                                                relative_set_distance(previous_messages, messages)
                                             }
                                         },
                                     )

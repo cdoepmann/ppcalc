@@ -4,6 +4,8 @@ mod trace;
 pub use trace::{DestinationId, MessageId, SourceId};
 pub use trace::{Trace, TraceEntry};
 
+mod containers;
+
 mod metric;
 pub use metric::{
     compute_message_anonymity_sets, compute_relation_ship_anonymity_sets,
