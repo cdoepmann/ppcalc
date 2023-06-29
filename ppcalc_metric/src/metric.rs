@@ -8,7 +8,7 @@ use time::{Duration, PrimitiveDateTime};
 
 use crate::bench;
 use crate::containers::MessageSet;
-use crate::trace::{DestinationId, MessageId, SourceId, Trace};
+use crate::trace::{DestinationId, DestinationMapping, MessageId, SourceId, SourceMapping, Trace};
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 enum EventTypeAndId {
@@ -77,7 +77,7 @@ fn relative_set_distance(set1: &MessageSet, set2: &MessageSet) -> (usize, usize)
 /// Split an anonymity set by the destination of its messages
 fn split_by_destination(
     set: MessageSet,
-    destination_mapping: &HashMap<MessageId, DestinationId>,
+    destination_mapping: &DestinationMapping,
 ) -> HashMap<DestinationId, MessageSet> {
     set.split_by(|message| *destination_mapping.get(&message).unwrap())
 }
@@ -86,8 +86,8 @@ pub fn compute_message_anonymity_sets(
     trace: &Trace,
     min_delay: Duration,
     max_delay: Duration,
-    source_mapping: &HashMap<MessageId, SourceId>,
-    destination_mapping: &HashMap<MessageId, DestinationId>,
+    source_mapping: &SourceMapping,
+    destination_mapping: &DestinationMapping,
 ) -> HashMap<SourceId, Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>> {
     // for each source, compute its queue of events (messages entering and leaving the network)
     let events = compute_event_queues(trace, min_delay, max_delay);
@@ -196,21 +196,6 @@ pub fn compute_message_anonymity_sets(
     result
 }
 
-fn compute_source_and_destination_mapping(
-    trace: &Trace,
-) -> (
-    HashMap<MessageId, SourceId>,
-    HashMap<MessageId, DestinationId>,
-) {
-    let mut source_mapping = HashMap::default();
-    let mut destination_mapping = HashMap::default();
-    for entry in trace.entries.iter() {
-        source_mapping.insert(entry.m_id, entry.source_id.clone());
-        destination_mapping.insert(entry.m_id, entry.destination_id.clone());
-    }
-    (source_mapping, destination_mapping)
-}
-
 fn compute_source_and_destination_message_mapping(
     trace: &Trace,
 ) -> (
@@ -258,7 +243,7 @@ pub fn compute_relationship_anonymity(
     bench.measure("preliminaries for metric calculation", BENCH_ENABLED);
     let (source_message_mapping, destination_message_mapping) =
         compute_source_and_destination_message_mapping(&trace);
-    let (source_mapping, destination_mapping) = compute_source_and_destination_mapping(&trace);
+    let (source_mapping, destination_mapping) = trace.source_and_destination_mappings();
 
     bench.measure("source anonymity sets", BENCH_ENABLED);
     let source_message_anonymity_sets = compute_message_anonymity_sets(

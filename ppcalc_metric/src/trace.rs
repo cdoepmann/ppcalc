@@ -55,6 +55,51 @@ impl Trace {
     //     }
     //     Ok(())
     // }
+
+    /// Compute mappings (Vecs) that map each message ID to their respective
+    /// source and destination.
+    pub(crate) fn source_and_destination_mappings(&self) -> (SourceMapping, DestinationMapping) {
+        let mut source_mapping = SourceMapping {
+            data: Vec::with_capacity(self.entries.len()),
+        };
+        let mut dest_mapping = DestinationMapping {
+            data: Vec::with_capacity(self.entries.len()),
+        };
+
+        let mut next_msg_id: u64 = 0;
+        for entry in self.entries.iter() {
+            if entry.m_id.to_num() != next_msg_id {
+                panic!("Message IDs need to be sequential, starting from 0. Found messge ID {} but expected {}", entry.m_id, next_msg_id);
+            }
+            source_mapping.data.push(entry.source_id);
+            dest_mapping.data.push(entry.destination_id);
+            next_msg_id += 1;
+        }
+
+        (source_mapping, dest_mapping)
+    }
+}
+
+pub struct DestinationMapping {
+    data: Vec<DestinationId>,
+}
+
+impl DestinationMapping {
+    // TODO
+    pub(crate) fn get(&self, msg: &MessageId) -> Option<&DestinationId> {
+        self.data.get(msg.to_num() as usize)
+    }
+}
+
+pub struct SourceMapping {
+    data: Vec<SourceId>,
+}
+
+impl SourceMapping {
+    // TODO
+    pub(crate) fn get(&self, msg: &MessageId) -> Option<&SourceId> {
+        self.data.get(msg.to_num() as usize)
+    }
 }
 
 macro_rules! implement_display {
@@ -72,6 +117,10 @@ macro_rules! implement_conversions {
         impl $t {
             pub fn new(other: $b) -> Self {
                 Self(other)
+            }
+
+            pub fn to_num(self) -> $b {
+                self.0
             }
         }
     };
