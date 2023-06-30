@@ -1,11 +1,13 @@
 use anyhow::anyhow;
-use ppcalc_metric::Trace;
+use ppcalc_metric::TraceBuilder;
 use time::Duration;
 
 use crate::cli::AnalyzeArgs;
 
 pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
-    let network_trace = Trace::from_csv(&args.input).map_err(|e| anyhow!(e))?;
+    let network_trace = TraceBuilder::from_csv(&args.input)
+        .map_err(|e| anyhow!(e))?
+        .build()?;
     let (source_relationship_anonymity_sets, _destination_relationship_anonymity_sets) =
         ppcalc_metric::compute_relationship_anonymity(
             &network_trace,

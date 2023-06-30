@@ -1,16 +1,8 @@
+use std::cmp::Ordering;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 use time::PrimitiveDateTime;
-
-/// A network trace containing the ground truth of an ACN run.
-///
-/// [Trace]s are meant as the "ground truth" in the way that they contain the
-/// real mapping of messages at the source and destination. They are usually
-/// the product of some sort of simulation in a controlled environment.
-pub struct Trace {
-    entries: Vec<TraceEntry>,
-}
 
 /// A single entry within a provided [Trace].
 ///
@@ -25,15 +17,20 @@ pub struct TraceEntry {
     pub destination_timestamp: PrimitiveDateTime,
 }
 
-impl Trace {
-    /// Construct a new, empty trace object
-    pub fn new() -> Trace {
-        Trace {
+/// A builder for a network trace.
+pub struct TraceBuilder {
+    entries: Vec<TraceEntry>,
+}
+
+impl TraceBuilder {
+    /// Construct a new trace builder
+    pub fn new() -> TraceBuilder {
+        TraceBuilder {
             entries: Vec::new(),
         }
     }
 
-    /// Add a new entry to the trace
+    /// Add a new entry to the trace builder
     pub fn add_entry(&mut self, entry: TraceEntry) {
         self.entries.push(entry);
     }
@@ -41,20 +38,119 @@ impl Trace {
     /// Load a full trace from a CSV file, given its file path
     pub fn from_csv(
         path: impl AsRef<Path>,
-    ) -> Result<Trace, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<TraceBuilder, Box<dyn std::error::Error + Send + Sync>> {
         let path = path.as_ref();
 
         let mut rdr = csv::ReaderBuilder::new().from_path(path)?;
         let mut iter = rdr.deserialize();
-        let mut entries: Vec<TraceEntry> = vec![];
 
+        let mut trace = TraceBuilder::new();
         while let Some(result) = iter.next() {
             let entry: TraceEntry = result?;
-            entries.push(entry);
+            trace.add_entry(entry);
         }
-        Ok(Trace { entries })
+        Ok(trace)
     }
 
+    /// Fix the contained entries so they fulfil the trace requirements.
+    /// This primarily renames the message IDs.
+    pub fn fix(&mut self) {
+        self.entries
+            .sort_unstable_by_key(|e| e.destination_timestamp);
+        for (i, entry) in self.entries.iter_mut().enumerate() {
+            entry.m_id = MessageId::new(i as u64);
+        }
+    }
+
+    /// Construct a trace object from the loaded entries
+    pub fn build(mut self) -> Result<Trace, TraceBuildError> {
+        // check message IDs first
+        self.entries.sort_unstable_by_key(|e| e.m_id);
+
+        if self.entries.len() == 0 {
+            return Err(TraceBuildError::EmptyTrace);
+        }
+
+        let mut next_msg: u64 = 0;
+        for msg in self.entries.iter() {
+            match msg.m_id.to_num().cmp(&next_msg) {
+                Ordering::Equal => {
+                    next_msg += 1;
+                    continue;
+                }
+                Ordering::Greater => {
+                    // we incremented next_msg but the entries' IDs didn't grow
+                    return Err(TraceBuildError::MessageIdsNotUnique(msg.m_id));
+                }
+                Ordering::Less => {
+                    return Err(TraceBuildError::MessageIdsHaveGaps(msg.m_id));
+                }
+            }
+        }
+
+        // check arrival times
+        let mut previous_time: Option<PrimitiveDateTime> = None;
+        for entry in self.entries.iter() {
+            match previous_time {
+                None => {}
+                Some(prev) => {
+                    if prev > entry.destination_timestamp {
+                        return Err(TraceBuildError::NotSortedByArrival(entry.m_id));
+                    }
+                }
+            }
+            previous_time = Some(entry.destination_timestamp);
+        }
+
+        let (source_mapping, destination_mapping) = self.source_and_destination_mappings();
+
+        Ok(Trace {
+            entries: self.entries,
+            max_msgid: MessageId::new(next_msg - 1),
+            source_mapping,
+            destination_mapping,
+        })
+    }
+
+    /// Compute mappings (Vecs) that map each message ID to their respective
+    /// source and destination.
+    pub(crate) fn source_and_destination_mappings(&self) -> (SourceMapping, DestinationMapping) {
+        let mut source_mapping = SourceMapping {
+            data: Vec::with_capacity(self.entries.len()),
+        };
+        let mut dest_mapping = DestinationMapping {
+            data: Vec::with_capacity(self.entries.len()),
+        };
+
+        // checked before
+        // let mut next_msg_id: u64 = 0;
+        for entry in self.entries.iter() {
+            // if entry.m_id.to_num() != next_msg_id {
+            //     panic!("Message IDs need to be sequential, starting from 0. Found messge ID {} but expected {}", entry.m_id, next_msg_id);
+            // }
+            source_mapping.data.push(entry.source_id);
+            dest_mapping.data.push(entry.destination_id);
+            // next_msg_id += 1;
+        }
+
+        (source_mapping, dest_mapping)
+    }
+}
+
+/// A network trace containing the ground truth of an ACN run.
+///
+/// [Trace]s are meant as the "ground truth" in the way that they contain the
+/// real mapping of messages at the source and destination. They are usually
+/// the product of some sort of simulation in a controlled environment.
+pub struct Trace {
+    entries: Vec<TraceEntry>,
+    max_msgid: MessageId,
+    source_mapping: SourceMapping,
+    destination_mapping: DestinationMapping,
+}
+
+impl Trace {
+    /// Serialize to a CSV file
     pub fn write_to_file(
         &self,
         path: impl AsRef<Path>,
@@ -68,33 +164,33 @@ impl Trace {
         Ok(())
     }
 
-    /// Compute mappings (Vecs) that map each message ID to their respective
-    /// source and destination.
-    pub(crate) fn source_and_destination_mappings(&self) -> (SourceMapping, DestinationMapping) {
-        let mut source_mapping = SourceMapping {
-            data: Vec::with_capacity(self.entries.len()),
-        };
-        let mut dest_mapping = DestinationMapping {
-            data: Vec::with_capacity(self.entries.len()),
-        };
-
-        let mut next_msg_id: u64 = 0;
-        for entry in self.entries.iter() {
-            if entry.m_id.to_num() != next_msg_id {
-                panic!("Message IDs need to be sequential, starting from 0. Found messge ID {} but expected {}", entry.m_id, next_msg_id);
-            }
-            source_mapping.data.push(entry.source_id);
-            dest_mapping.data.push(entry.destination_id);
-            next_msg_id += 1;
-        }
-
-        (source_mapping, dest_mapping)
-    }
-
     /// Get an iterator over the entries in this trace
     pub fn entries(&self) -> impl Iterator<Item = &TraceEntry> {
         self.entries.iter()
     }
+
+    /// Get the source mapping
+    pub fn get_source_mapping(&self) -> &SourceMapping {
+        &self.source_mapping
+    }
+
+    /// Get the destination mapping
+    pub fn get_destination_mapping(&self) -> &DestinationMapping {
+        &self.destination_mapping
+    }
+}
+
+/// An error that can occur when building a trace
+#[derive(Debug, thiserror::Error)]
+pub enum TraceBuildError {
+    #[error("There are no messages in the trace.")]
+    EmptyTrace,
+    #[error("Destination arrival times do not monotonically increase with message IDs. Observed at message {0}.")]
+    NotSortedByArrival(MessageId),
+    #[error("Message IDs have gaps, but need to be sequential. Observed at message {0}.")]
+    MessageIdsHaveGaps(MessageId),
+    #[error("Message ID used multiple times: {0}")]
+    MessageIdsNotUnique(MessageId),
 }
 
 pub struct DestinationMapping {
@@ -102,7 +198,6 @@ pub struct DestinationMapping {
 }
 
 impl DestinationMapping {
-    // TODO
     pub(crate) fn get(&self, msg: &MessageId) -> Option<&DestinationId> {
         self.data.get(msg.to_num() as usize)
     }
@@ -113,7 +208,6 @@ pub struct SourceMapping {
 }
 
 impl SourceMapping {
-    // TODO
     pub(crate) fn get(&self, msg: &MessageId) -> Option<&SourceId> {
         self.data.get(msg.to_num() as usize)
     }

@@ -2,7 +2,7 @@
 
 mod trace;
 pub use trace::{DestinationId, MessageId, SourceId};
-pub use trace::{Trace, TraceEntry};
+pub use trace::{Trace, TraceBuilder, TraceEntry};
 
 mod containers;
 

@@ -7,7 +7,9 @@ use time::{Duration, PrimitiveDateTime};
 
 use crate::bench;
 use crate::containers::MessageSet;
-use crate::trace::{DestinationId, DestinationMapping, MessageId, SourceId, SourceMapping, Trace};
+use crate::trace::{
+    DestinationId, DestinationMapping, MessageId, SourceId, SourceMapping, Trace, TraceBuilder,
+};
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 enum EventTypeAndId {
@@ -239,10 +241,8 @@ pub fn compute_relationship_anonymity(
     let mut bench = bench::Bench::new();
     let BENCH_ENABLED = true;
 
-    bench.measure("preliminaries for metric calculation", BENCH_ENABLED);
-    let (source_message_mapping, destination_message_mapping) =
-        compute_source_and_destination_message_mapping(&trace);
-    let (source_mapping, destination_mapping) = trace.source_and_destination_mappings();
+    let source_mapping = trace.get_source_mapping();
+    let destination_mapping = trace.get_destination_mapping();
 
     bench.measure("source anonymity sets", BENCH_ENABLED);
     let source_message_anonymity_sets = compute_message_anonymity_sets(
