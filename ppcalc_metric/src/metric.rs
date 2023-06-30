@@ -3,7 +3,7 @@ use std::cmp::{min, Ordering};
 use std::{collections::hash_map::Entry, fmt::Display, ops::Add};
 
 use fxhash::FxHashMap as HashMap;
-use time::{Duration, PrimitiveDateTime};
+use time::{Duration, OffsetDateTime, PrimitiveDateTime};
 
 use crate::bench;
 use crate::containers::MessageSet;
@@ -117,7 +117,24 @@ pub fn compute_message_anonymity_sets(
     // // keep track of the source messages in the current window
     // let mut current_source_messages: HashSet<MessageId> = HashSet::default();
 
-    for event in events {
+    let events_total = events.len();
+    for (i, event) in events.into_iter().enumerate() {
+        if i % 10000 == 0 {
+            let now = OffsetDateTime::now_local().unwrap();
+            println!(
+                "[{:?}] Processing event {}/{}...",
+                now.format(
+                    &time::format_description::parse(
+                        "[year]-[month]-[day] [hour]:[minute]:[second]"
+                    )
+                    .unwrap()
+                )
+                .unwrap(),
+                i + 1,
+                events_total,
+            );
+        }
+
         match event.event_type {
             EventTypeAndId::AddSourceMessage(_) => {
                 // A source message was first observed
