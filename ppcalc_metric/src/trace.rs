@@ -34,7 +34,9 @@ impl Trace {
     }
 
     /// Load a full trace from a CSV file, given its file path
-    pub fn from_csv(path: impl AsRef<Path>) -> Result<Trace, Box<dyn std::error::Error>> {
+    pub fn from_csv(
+        path: impl AsRef<Path>,
+    ) -> Result<Trace, Box<dyn std::error::Error + Send + Sync>> {
         let path = path.as_ref();
 
         let mut rdr = csv::ReaderBuilder::new().from_path(path)?;
@@ -48,13 +50,18 @@ impl Trace {
         Ok(Trace { entries })
     }
 
-    // pub fn write_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    //     let mut wtr = WriterBuilder::new().from_path(path)?;
-    //     for entry in self.entries.iter() {
-    //         wtr.serialize(entry)?;
-    //     }
-    //     Ok(())
-    // }
+    pub fn write_to_file(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let path = path.as_ref();
+
+        let mut wtr = csv::WriterBuilder::new().from_path(path)?;
+        for entry in self.entries.iter() {
+            wtr.serialize(entry)?;
+        }
+        Ok(())
+    }
 
     /// Compute mappings (Vecs) that map each message ID to their respective
     /// source and destination.
