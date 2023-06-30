@@ -3,7 +3,6 @@ use std::cmp::{min, Ordering};
 use std::{collections::hash_map::Entry, fmt::Display, ops::Add};
 
 use fxhash::FxHashMap as HashMap;
-use fxhash::FxHashSet as HashSet;
 use time::{Duration, PrimitiveDateTime};
 
 use crate::bench;
@@ -204,7 +203,7 @@ fn compute_source_and_destination_message_mapping(
 ) {
     let mut source_message_mapping = HashMap::default();
     let mut destination_message_mapping = HashMap::default();
-    for trace_entry in trace.entries.iter() {
+    for trace_entry in trace.entries() {
         match source_message_mapping.entry(trace_entry.source_id.clone()) {
             Entry::Vacant(e) => {
                 e.insert(vec![trace_entry.m_id]);
@@ -404,7 +403,7 @@ fn compute_event_queues(
 
     let max_delay = max_delay + time::Duration::nanoseconds(1); // TODO
 
-    for entry in trace.entries.iter() {
+    for entry in trace.entries() {
         event_queue.push(ProcessingEvent {
             event_type: EventTypeAndId::AddSourceMessage(entry.source_id),
             ts: entry.source_timestamp.add(min_delay),

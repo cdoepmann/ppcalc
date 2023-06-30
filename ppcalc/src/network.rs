@@ -11,13 +11,14 @@ pub fn generate_network_delay(
     max_delay: i64,
     pre_network_trace: Vec<trace::PreNetworkTraceEntry>,
 ) -> Trace {
-    let mut trace = vec![];
     let mut m_id = 0;
     let distr = Uniform::from(min_delay..max_delay);
     let mut rng = rand::thread_rng();
     let delay = distr.sample(&mut rng);
+
+    let mut trace = Trace::new();
     for entry in pre_network_trace {
-        trace.push(TraceEntry {
+        trace.add_entry(TraceEntry {
             m_id: MessageId::new(m_id),
             source_id: entry.source_id,
             source_timestamp: entry.source_timestamp,
@@ -29,7 +30,7 @@ pub fn generate_network_delay(
         });
         m_id += 1;
     }
-    Trace { entries: trace }
+    trace
 }
 
 /* Todo we have sorted vectors of timestamps, this should be doable in something like timestamps * log(sources) */

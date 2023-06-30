@@ -9,7 +9,7 @@ use time::PrimitiveDateTime;
 /// real mapping of messages at the source and destination. They are usually
 /// the product of some sort of simulation in a controlled environment.
 pub struct Trace {
-    pub entries: Vec<TraceEntry>,
+    entries: Vec<TraceEntry>,
 }
 
 /// A single entry within a provided [Trace].
@@ -31,6 +31,11 @@ impl Trace {
         Trace {
             entries: Vec::new(),
         }
+    }
+
+    /// Add a new entry to the trace
+    pub fn add_entry(&mut self, entry: TraceEntry) {
+        self.entries.push(entry);
     }
 
     /// Load a full trace from a CSV file, given its file path
@@ -84,6 +89,11 @@ impl Trace {
         }
 
         (source_mapping, dest_mapping)
+    }
+
+    /// Get an iterator over the entries in this trace
+    pub fn entries(&self) -> impl Iterator<Item = &TraceEntry> {
+        self.entries.iter()
     }
 }
 
