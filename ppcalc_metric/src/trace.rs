@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::path::Path;
 
+use fxhash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
 use time::PrimitiveDateTime;
 
@@ -102,6 +103,17 @@ impl TraceBuilder {
             previous_time = Some(entry.destination_timestamp);
         }
 
+        // check source IDs
+        let sources: HashSet<SourceId> = self.entries.iter().map(|e| e.source_id).collect();
+        let sources = {
+            let mut v: Vec<_> = sources.into_iter().collect();
+            v.sort();
+            v
+        };
+        for (i, s) in sources.iter().enumerate() {
+            assert_eq!(i as u64, s.to_num());
+        }
+
         let (source_mapping, destination_mapping) = self.source_and_destination_mappings();
 
         Ok(Trace {
@@ -109,6 +121,7 @@ impl TraceBuilder {
             max_msgid: MessageId::new(next_msg - 1),
             source_mapping,
             destination_mapping,
+            max_sourceid: sources.last().unwrap().clone(),
         })
     }
 
@@ -147,6 +160,7 @@ pub struct Trace {
     max_msgid: MessageId,
     source_mapping: SourceMapping,
     destination_mapping: DestinationMapping,
+    max_sourceid: SourceId,
 }
 
 impl Trace {
@@ -178,6 +192,20 @@ impl Trace {
     pub fn get_destination_mapping(&self) -> &DestinationMapping {
         &self.destination_mapping
     }
+
+    /// Get the maximum message ID
+    pub fn max_message_id(&self) -> MessageId {
+        self.max_msgid
+    }
+
+    /// Get the maximum source ID
+    pub fn max_source_id(&self) -> SourceId {
+        self.max_sourceid
+    }
+
+    pub fn entries_vec(&self) -> &Vec<TraceEntry> {
+        &self.entries
+    }
 }
 
 /// An error that can occur when building a trace
@@ -201,6 +229,10 @@ impl DestinationMapping {
     pub(crate) fn get(&self, msg: &MessageId) -> Option<&DestinationId> {
         self.data.get(msg.to_num() as usize)
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.data.len()
+    }
 }
 
 pub struct SourceMapping {
@@ -210,6 +242,10 @@ pub struct SourceMapping {
 impl SourceMapping {
     pub(crate) fn get(&self, msg: &MessageId) -> Option<&SourceId> {
         self.data.get(msg.to_num() as usize)
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.data.len()
     }
 }
 
