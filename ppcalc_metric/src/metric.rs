@@ -463,6 +463,22 @@ fn compute_anon_sets_2(
         v
     };
 
+    // progress printer
+    let (progress_s, progress_r) = crossbeam_channel::unbounded::<bool>();
+    let thread_handle = std::thread::spawn(move || {
+        println!("Processing sources...");
+        let mut seen: usize = 0;
+        while let Ok(value) = progress_r.recv() {
+            if value == false {
+                break;
+            }
+            seen += 1;
+            if seen % 1000 == 0 && seen > 0 {
+                println!("Processed {} sources...", seen);
+            }
+        }
+    });
+
     let result: HashMap<SourceId, Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>> =
         messages_per_source
             .into_par_iter()
@@ -532,9 +548,14 @@ fn compute_anon_sets_2(
                     // remember the original (but split by destination) anonymity set for next iteration
                     last_msg_anonset = Some(this_msg_anonset);
                 }
+                progress_s.send(true).unwrap();
                 (source, source_result)
             })
             .collect();
+
+    progress_s.send(false).unwrap();
+    thread_handle.join().unwrap();
+    println!("done.");
 
     result
 }
