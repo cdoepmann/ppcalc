@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use csv::WriterBuilder;
 use serde::{Deserialize, Serialize};
 use time::PrimitiveDateTime;
 
@@ -48,13 +49,13 @@ impl Trace {
         Ok(Trace { entries })
     }
 
-    // pub fn write_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    //     let mut wtr = WriterBuilder::new().from_path(path)?;
-    //     for entry in self.entries.iter() {
-    //         wtr.serialize(entry)?;
-    //     }
-    //     Ok(())
-    // }
+    pub fn write_to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+        let mut wtr = WriterBuilder::new().from_path(path)?;
+        for entry in self.entries.iter() {
+            wtr.serialize(entry)?;
+        }
+        Ok(())
+    }
 }
 
 macro_rules! implement_display {

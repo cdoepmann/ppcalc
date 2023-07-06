@@ -4,6 +4,8 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::{min, Ordering};
 use std::collections::BTreeMap;
+use std::path::Path;
+use std::path::PathBuf;
 use std::{collections::hash_map::Entry, fmt::Display, fs::File, io::BufReader, ops::Add};
 use time::{Duration, PrimitiveDateTime};
 
@@ -461,18 +463,18 @@ fn compute_event_queues(
 
 pub fn write_source_anon_set(
     map: &HashMap<SourceId, Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>>,
-    path: &str,
+    path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let wtr = std::fs::File::create(path)?;
-    serde_json::to_writer(&wtr, map)?;
+    serde_json::to_writer_pretty(&wtr, map)?;
     Ok(())
 }
-pub fn write_source_message_anon_set(
+pub fn write_sras(
     map: &BTreeMap<MessageId, Vec<DestinationId>>,
-    path: &str,
+    path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let wtr = std::fs::File::create(path)?;
-    serde_json::to_writer(&wtr, map)?;
+    serde_json::to_writer_pretty(&wtr, map)?;
     Ok(())
 }
 
@@ -520,37 +522,58 @@ fn compare_source_anonymity_sets(
     }
     Ok(())
 }
+#[derive(Serialize, Deserialize)]
+pub struct TestParameters {
+    min_delay: i64,
+    max_delay: i64,
+}
+pub fn read_parameters(path: &str) -> Result<TestParameters, Box<dyn std::error::Error>> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
 
+    // Read the JSON contents of the file as an instance of `User`.
+    let parameters = serde_json::from_reader(reader)?;
+    Ok(parameters)
+}
+
+fn append_to_path(p: PathBuf, s: &str) -> PathBuf {
+    let mut p = p.into_os_string();
+    p.push(s);
+    p.into()
+}
+pub fn simple_example_generator(
+    min_delay: i64,
+    max_delay: i64,
+    network_trace: Trace,
+    source_relationship_anonymity_set: HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
+    path: PathBuf,
+) {
+    let min_delay = Duration::milliseconds(min_delay);
+    let max_delay = Duration::milliseconds(max_delay);
+    let net_trace_path = append_to_path(path.clone(), "./net_trace.csv");
+    let source_anon_set_path = append_to_path(path.clone(), "./source_anonymity_set.json");
+    let sras_path = append_to_path(path, "./sras.json");
+    network_trace.write_to_file(&net_trace_path);
+
+    let mut sras_map = BTreeMap::default();
+    for (_s_id, sas) in source_relationship_anonymity_set {
+        for (m_id, d_ids) in sas {
+            sras_map.insert(m_id, d_ids);
+        }
+    }
+    write_sras(&sras_map, &sras_path);
+}
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{
+        collections::HashMap,
+        path::{Path, PathBuf},
+    };
 
     use crate::metric::*;
-    /*
-    #[test]
-    fn simple_example_validation() {
 
-        let min_delay = Duration::milliseconds(1);
-        let max_delay = Duration::milliseconds(100);
-        let network_trace =
-            Trace::from_csv("./test/simple_test_1/simple_network_trace.csv").unwrap();
-        /*let (source_mapping, destination_mapping) = compute_source_and_destination_mapping(&network_trace);
-        let source_anonymity_set =
-            compute_message_anonymity_sets(&network_trace, min_delay, max_delay, &source_mapping, &destination_mapping);
-        write_source_anon_set(&source_anonymity_set, "./source_anonymity_set.json");
-        let expected_source_anonymity_set = read_source_anon_set("./test/simple_test_1/source_anonymity_set.json");*/
-        // TODO compare_source_anonymity_sets()
-        let (source_relationship_anonymity_set, _) =
-            compute_relationship_anonymity(&network_trace, min_delay, max_delay).unwrap();
-        let mut sras_map = BTreeMap::default();
-        for (_s_id, sas) in source_relationship_anonymity_set {
-            for (m_id, d_ids) in sas {
-                sras_map.insert(m_id, d_ids);
-            }
-        }
-        write_source_message_anon_set(&sras_map, "./sras.json");
-    }*/
     fn execute_test(min_delay: i64, max_delay: i64, path: &str) {
+        let parameters = read_parameters(path);
         let min_delay = Duration::milliseconds(min_delay);
         let max_delay = Duration::milliseconds(max_delay);
         let trace_path = String::from(path) + "/network_trace.csv";
@@ -571,276 +594,4 @@ mod tests {
     fn simple_test_1() {
         execute_test(1, 100, "./test/simple_test_1/");
     }
-    /*
-    #[test]
-    fn simple_example_validation() {
-        let network_trace = Trace::from_csv("./test/simple_network_trace.csv").unwrap();
-        let (source_anonymity_sets, destination_anonymity_sets) =
-            compute_message_anonymity_sets(&network_trace, 1, 100).unwrap();
-
-        let mut expected_source_message_anonymity_set: HashMap<MessageId, Vec<MessageId>> =
-            HashMap::new();
-
-        for (message, anon_set_messages) in [
-            (0, vec![0, 1, 2, 3, 4, 5, 6, 7]),
-            (1, vec![0, 1, 2, 3, 4, 5, 6, 7]),
-            (2, vec![1, 2, 3, 4, 5, 6, 7, 8]),
-            (3, vec![3, 4, 5, 6, 7, 8, 9, 10]),
-            (4, vec![4, 5, 6, 7, 8, 9, 10]),
-            (5, vec![4, 5, 6, 7, 8, 9, 10]),
-            (6, vec![4, 5, 6, 7, 8, 9, 10, 11]),
-            (7, vec![6, 7, 8, 9, 10, 11, 12]),
-            (8, vec![8, 9, 10, 11, 12, 13]),
-            (9, vec![8, 9, 10, 11, 12, 13, 14]),
-            (10, vec![8, 9, 10, 11, 12, 13, 14, 15]),
-            (11, vec![11, 12, 13, 14, 15]),
-            (12, vec![11, 12, 13, 14, 15]),
-            (13, vec![13, 14, 15]),
-            (14, vec![14, 15]),
-            (15, vec![14, 15]),
-        ] {
-            expected_source_message_anonymity_set.insert(
-                MessageId::new(message),
-                anon_set_messages
-                    .into_iter()
-                    .map(|x| MessageId::new(x))
-                    .collect(),
-            );
-        }
-
-        for id in 0..16 {
-            assert_eq!(
-                *source_anonymity_sets.get(&MessageId::new(id)).unwrap(),
-                *expected_source_message_anonymity_set
-                    .get(&MessageId::new(id))
-                    .unwrap(),
-                "Source message anonymity set differed from expectation at id: {}",
-                id
-            );
-        }
-
-        let mut expected_destination_message_anonymity_set: HashMap<MessageId, Vec<MessageId>> =
-            HashMap::new();
-
-        for (message, anon_set_messages) in [
-            (0, vec![0, 1]),
-            (1, vec![0, 1, 2]),
-            (2, vec![0, 1, 2]),
-            (3, vec![0, 1, 2, 3]),
-            (4, vec![0, 1, 2, 3, 4, 5, 6]),
-            (5, vec![0, 1, 2, 3, 4, 5, 6]),
-            (6, vec![0, 1, 2, 3, 4, 5, 6, 7]),
-            (7, vec![0, 1, 2, 3, 4, 5, 6, 7]),
-            (8, vec![2, 3, 4, 5, 6, 7, 8, 9, 10]),
-            (9, vec![3, 4, 5, 6, 7, 8, 9, 10]),
-            (10, vec![3, 4, 5, 6, 7, 8, 9, 10]),
-            (11, vec![6, 7, 8, 9, 10, 11, 12]),
-            (12, vec![7, 8, 9, 10, 11, 12]),
-            (13, vec![8, 9, 10, 11, 12, 13]),
-            (14, vec![9, 10, 11, 12, 13, 14, 15]),
-            (15, vec![10, 11, 12, 13, 14, 15]),
-        ] {
-            expected_destination_message_anonymity_set.insert(
-                MessageId::new(message),
-                anon_set_messages
-                    .into_iter()
-                    .map(|x| MessageId::new(x))
-                    .collect(),
-            );
-        }
-
-        for id in 0..16 {
-            assert_eq!(
-                *destination_anonymity_sets.get(&MessageId::new(id)).unwrap(),
-                *expected_destination_message_anonymity_set
-                    .get(&MessageId::new(id))
-                    .unwrap(),
-                "Destination message anonymity set differed from expectation at id: {}",
-                id
-            );
-        }
-
-        let (source_relationship_anonymity_sets, destination_relationship_anonymity_sets) =
-            compute_relationship_anonymity(&network_trace, 1, 100).unwrap();
-
-        let mut source_relationship_anonymity_sets_s1 = vec![];
-        let d1_s = DestinationId::new(1);
-        let d2_s = DestinationId::new(2);
-        source_relationship_anonymity_sets_s1
-            .push((MessageId::new(0), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s1
-            .push((MessageId::new(2), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s1
-            .push((MessageId::new(3), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s1
-            .push((MessageId::new(5), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s1
-            .push((MessageId::new(6), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s1
-            .push((MessageId::new(9), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s1
-            .push((MessageId::new(10), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s1.push((MessageId::new(12), vec![d1_s.clone()]));
-        source_relationship_anonymity_sets_s1.push((MessageId::new(14), vec![d1_s.clone()]));
-
-        let sras_s1 = source_relationship_anonymity_sets
-            .get(&SourceId::new(1))
-            .unwrap()
-            .clone();
-        assert_eq!(
-            sras_s1.len(),
-            source_relationship_anonymity_sets_s1.len(),
-            "The length of the anonymity sets for sender s1 differ"
-        );
-        let mut r_iter = sras_s1.into_iter();
-        let mut e_iter = source_relationship_anonymity_sets_s1.into_iter();
-        loop {
-            let (r_id, r_as) = match r_iter.next() {
-                Some(item) => item,
-                None => break,
-            };
-            let (e_id, mut e_as) = match e_iter.next() {
-                Some(item) => item,
-                None => {
-                    panic!("Real has entries left, expected doesn't. This should fail earlier.");
-                }
-            };
-            assert_eq!(r_id, e_id, "Real id, was not the same as expected id");
-            assert_eq!(
-                r_as,
-                e_as.len(),
-                "Anonymity sets differ in size at id: {}",
-                e_id
-            );
-        }
-
-        let mut source_relationship_anonymity_sets_s2 = vec![];
-        let d1_s = DestinationId::new(1);
-        let d2_s = DestinationId::new(2);
-        source_relationship_anonymity_sets_s2
-            .push((MessageId::new(1), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s2
-            .push((MessageId::new(4), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s2
-            .push((MessageId::new(7), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s2
-            .push((MessageId::new(8), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s2
-            .push((MessageId::new(11), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s2
-            .push((MessageId::new(13), vec![d1_s.clone(), d2_s.clone()]));
-        source_relationship_anonymity_sets_s2.push((MessageId::new(15), vec![d2_s.clone()]));
-
-        let sras_s2 = source_relationship_anonymity_sets
-            .get(&SourceId::new(2))
-            .unwrap()
-            .clone();
-        assert_eq!(
-            sras_s2.len(),
-            source_relationship_anonymity_sets_s2.len(),
-            "The length of the anonymity sets for sender s1 differ"
-        );
-        let mut r_iter = sras_s2.into_iter();
-        let mut e_iter = source_relationship_anonymity_sets_s2.into_iter();
-        loop {
-            let (r_id, r_as) = match r_iter.next() {
-                Some(item) => item,
-                None => break,
-            };
-            let (e_id, mut e_as) = match e_iter.next() {
-                Some(item) => item,
-                None => {
-                    panic!("Real has entries left, expected doesn't. This should fail earlier.");
-                }
-            };
-            assert_eq!(r_id, e_id, "Real id, was not the same as expected id");
-            assert_eq!(
-                r_as,
-                e_as.len(),
-                "Anonymity sets differ in size at id: {}",
-                e_id
-            );
-        }
-
-        //     let mut destination_relationship_anonymity_sets_d1 = vec![];
-        //     let s1_s = 1;
-        //     let s2_s = 2;
-        //     destination_relationship_anonymity_sets_d1.push((0, vec![s1_s.clone(), s2_s.clone()]));
-        //     destination_relationship_anonymity_sets_d1.push((2, vec![s1_s.clone()]));
-        //     destination_relationship_anonymity_sets_d1.push((3, vec![s1_s.clone()]));
-        //     destination_relationship_anonymity_sets_d1.push((5, vec![s1_s.clone()]));
-        //     destination_relationship_anonymity_sets_d1.push((6, vec![s1_s.clone()]));
-        //     destination_relationship_anonymity_sets_d1.push((9, vec![s1_s.clone()]));
-        //     destination_relationship_anonymity_sets_d1.push((10, vec![s1_s.clone()]));
-        //     destination_relationship_anonymity_sets_d1.push((12, vec![s1_s.clone()]));
-        //     destination_relationship_anonymity_sets_d1.push((14, vec![s1_s.clone()]));
-
-        //     let dras_d1 = destination_relationship_anonymity_sets
-        //         .get(&1)
-        //         .unwrap()
-        //         .clone();
-        //     assert_eq!(
-        //         dras_d1.len(),
-        //         destination_relationship_anonymity_sets_d1.len(),
-        //         "The length of the anonymity sets for sender s1 differ"
-        //     );
-        //     let mut r_iter = dras_d1.into_iter();
-        //     let mut e_iter = destination_relationship_anonymity_sets_d1.into_iter();
-        //     loop {
-        //         let (r_id, mut r_as) = match r_iter.next() {
-        //             Some(item) => item,
-        //             None => break,
-        //         };
-        //         let (e_id, mut e_as) = match e_iter.next() {
-        //             Some(item) => item,
-        //             None => {
-        //                 panic!("Real has entries left, expected doesn't. This should fail earlier.");
-        //             }
-        //         };
-        //         r_as.sort();
-        //         e_as.sort();
-        //         assert_eq!(r_id, e_id, "Real id, was not the same as expected id");
-        //         assert_eq!(r_as, e_as, "Anonymity sets differ at id: {}", e_id);
-        //     }
-
-        //     let mut destination_relationship_anonymity_sets_d2 = vec![];
-        //     let s1_s = 1;
-        //     let s2_s = 2;
-        //     destination_relationship_anonymity_sets_d2.push((1, vec![s1_s.clone(), s2_s.clone()]));
-        //     destination_relationship_anonymity_sets_d2.push((4, vec![s1_s.clone(), s2_s.clone()]));
-        //     destination_relationship_anonymity_sets_d2.push((7, vec![s1_s.clone(), s2_s.clone()]));
-        //     destination_relationship_anonymity_sets_d2.push((8, vec![s1_s.clone(), s2_s.clone()]));
-        //     destination_relationship_anonymity_sets_d2.push((11, vec![s1_s.clone(), s2_s.clone()]));
-        //     destination_relationship_anonymity_sets_d2.push((13, vec![s1_s.clone(), s2_s.clone()]));
-        //     destination_relationship_anonymity_sets_d2.push((15, vec![s1_s.clone(), s2_s.clone()]));
-
-        //     let dras_d2 = destination_relationship_anonymity_sets
-        //         .get(&2)
-        //         .unwrap()
-        //         .clone();
-        //     assert_eq!(
-        //         dras_d2.len(),
-        //         destination_relationship_anonymity_sets_d2.len(),
-        //         "The length of the anonymity sets for sender s1 differ"
-        //     );
-        //     let mut r_iter = dras_d2.into_iter();
-        //     let mut e_iter = destination_relationship_anonymity_sets_d2.into_iter();
-        //     loop {
-        //         let (r_id, mut r_as) = match r_iter.next() {
-        //             Some(item) => item,
-        //             None => break,
-        //         };
-        //         let (e_id, mut e_as) = match e_iter.next() {
-        //             Some(item) => item,
-        //             None => {
-        //                 panic!("Real has entries left, expected doesn't. This should fail earlier.");
-        //             }
-        //         };
-        //         r_as.sort();
-        //         e_as.sort();
-        //         assert_eq!(r_id, e_id, "Real id, was not the same as expected id");
-        //         assert_eq!(r_as, e_as, "Anonymity sets differ at id: {}", e_id);
-        //     }
-    }
-    */
 }

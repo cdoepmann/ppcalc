@@ -58,6 +58,8 @@ fn main() {
     let mut params = Parameters::default();
     let mut bench = bench::Bench::new();
     let BENCH_ENABLED = true;
+    let mut generate_testcase = false;
+    let mut testcase_path = String::from("");
 
     bench.measure("Command line parsing", BENCH_ENABLED);
     while let Some(arg) = args.next() {
@@ -76,6 +78,13 @@ fn main() {
                     params.num_destinations = arg_config.parse().unwrap();
                 } else {
                     panic!("No value specified for parameter -d");
+                }
+            }
+            "-P" => {
+                if let Some(arg_config) = args.next() {
+                    testcase_path = arg_config.parse().unwrap();
+                } else {
+                    panic!("No value specified for parameter -P");
                 }
             }
             "--destination_selection" => {
@@ -171,6 +180,9 @@ fn main() {
                 } else {
                     panic!("No value specified for parameter --num_messages_distr.");
                 }
+            }
+            "--generate-testcase" => {
+                generate_testcase = true;
             }
             "--network_delay" => {
                 if let Some(arg_config) = args.next() {
@@ -331,4 +343,14 @@ fn main() {
         }
     }
     */
+
+    if generate_testcase && testcase_path != "" {
+        ppcalc_metric::simple_example_generator(
+            params.network_delay_min,
+            params.network_delay_max,
+            network_trace,
+            source_relationship_anonymity_sets,
+            testcase_path.into(),
+        )
+    }
 }
