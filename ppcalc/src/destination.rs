@@ -6,12 +6,17 @@ use statrs::distribution::Normal;
 
 use ppcalc_metric::{DestinationId, SourceId};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum DestinationSelectionType {
     Uniform,
     RoundRobin,
     SmallWorld,
     Normal,
+}
+impl Default for DestinationSelectionType {
+    fn default() -> DestinationSelectionType {
+        DestinationSelectionType::Uniform
+    }
 }
 
 pub fn destination_selection(

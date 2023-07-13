@@ -4,6 +4,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::{min, Ordering};
 use std::collections::BTreeMap;
+use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::{collections::hash_map::Entry, fmt::Display, fs::File, io::BufReader, ops::Add};
@@ -527,13 +528,22 @@ pub struct TestParameters {
     min_delay: i64,
     max_delay: i64,
 }
-pub fn read_parameters(path: &str) -> Result<TestParameters, Box<dyn std::error::Error>> {
+pub fn read_parameters(path: &Path) -> Result<TestParameters, Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
 
     // Read the JSON contents of the file as an instance of `User`.
     let parameters = serde_json::from_reader(reader)?;
     Ok(parameters)
+}
+
+pub fn write_parameters(
+    params: TestParameters,
+    path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let wtr = std::fs::File::create(path)?;
+    serde_json::to_writer_pretty(&wtr, &params)?;
+    Ok(())
 }
 
 fn append_to_path(p: PathBuf, s: &str) -> PathBuf {
@@ -548,11 +558,10 @@ pub fn simple_example_generator(
     source_relationship_anonymity_set: HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
     path: PathBuf,
 ) {
-    let min_delay = Duration::milliseconds(min_delay);
-    let max_delay = Duration::milliseconds(max_delay);
-    let net_trace_path = append_to_path(path.clone(), "./net_trace.csv");
+    fs::create_dir_all(path.clone()).unwrap();
+    let net_trace_path = append_to_path(path.clone(), "./network_trace.csv");
     let source_anon_set_path = append_to_path(path.clone(), "./source_anonymity_set.json");
-    let sras_path = append_to_path(path, "./sras.json");
+    let sras_path = append_to_path(path.clone(), "./sras.json");
     network_trace.write_to_file(&net_trace_path);
 
     let mut sras_map = BTreeMap::default();
@@ -562,6 +571,13 @@ pub fn simple_example_generator(
         }
     }
     write_sras(&sras_map, &sras_path);
+
+    let parameter_path = append_to_path(path.clone(), "./params.json");
+    let params = TestParameters {
+        min_delay: min_delay,
+        max_delay: max_delay,
+    };
+    write_parameters(params, &parameter_path);
 }
 #[cfg(test)]
 mod tests {
@@ -572,10 +588,11 @@ mod tests {
 
     use crate::metric::*;
 
-    fn execute_test(min_delay: i64, max_delay: i64, path: &str) {
-        let parameters = read_parameters(path);
-        let min_delay = Duration::milliseconds(min_delay);
-        let max_delay = Duration::milliseconds(max_delay);
+    fn execute_test(path: &str) {
+        let parameter_path = append_to_path(path.clone().into(), "./params.json");
+        let parameters = read_parameters(&parameter_path).unwrap();
+        let min_delay = Duration::milliseconds(parameters.min_delay);
+        let max_delay = Duration::milliseconds(parameters.max_delay);
         let trace_path = String::from(path) + "/network_trace.csv";
         let sras_path = String::from(path) + "/sras.json";
         let network_trace = Trace::from_csv(trace_path).unwrap();
@@ -592,6 +609,34 @@ mod tests {
     }
     #[test]
     fn simple_test_1() {
-        execute_test(1, 100, "./test/simple_test_1/");
+        execute_test("./test/simple_test_1/");
+    }
+    #[test]
+    fn simple_test_2() {
+        execute_test("./test/simple_test_2/");
+    }
+
+    #[test]
+    fn simple_test_3() {
+        execute_test("./test/simple_test_3/");
+    }
+    #[test]
+    fn simple_test_4() {
+        execute_test("./test/simple_test_4/");
+    }
+
+    #[test]
+    fn simple_test_5() {
+        execute_test("./test/simple_test_5/");
+    }
+
+    #[test]
+    fn simple_test_6() {
+        execute_test("./test/simple_test_6/");
+    }
+
+    #[test]
+    fn simple_test_7() {
+        execute_test("./test/simple_test_7/");
     }
 }
