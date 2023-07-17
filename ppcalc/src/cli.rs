@@ -33,6 +33,9 @@ pub struct AnalyzeArgs {
     /// Input CSV trace file to analyze
     #[arg(value_name = "TRACE_FILE")]
     pub input: PathBuf,
+
+    /// Output the analysis data as a testcase
+    pub generate_testcase: Option<String>,
 }
 
 #[derive(Args, Debug)]

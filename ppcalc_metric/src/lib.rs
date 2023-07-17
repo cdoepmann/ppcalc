@@ -9,7 +9,7 @@ mod containers;
 mod metric;
 pub use metric::{
     compute_message_anonymity_sets, compute_relation_ship_anonymity_sets,
-    compute_relationship_anonymity,
+    compute_relationship_anonymity, simple_example_generator,
 };
 
 mod bench;

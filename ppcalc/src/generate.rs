@@ -24,7 +24,11 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
     let source_path = source_dir.clone() + "/sources.json";
     let source_file_exists: bool = Path::new(&source_path).exists();
 
-    if args.reuse_sources || source_file_exists {
+    if source_file_exists && !args.reuse_sources {
+        println!("Note! You did not reuse the sources, even though they are available")
+    }
+
+    if args.reuse_sources {
         bench.measure("reading sources", BENCH_ENABLED);
         traces = trace::read_source_trace_from_file(&source_path).unwrap();
         println!("Reusing sources");

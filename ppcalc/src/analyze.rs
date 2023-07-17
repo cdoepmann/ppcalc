@@ -1,8 +1,14 @@
+use std::collections::{BTreeMap, HashMap};
+use std::fs;
+use std::path::{Path, PathBuf};
+
 use anyhow::anyhow;
 use ppcalc_metric::TraceBuilder;
 use time::Duration;
 
 use crate::cli::AnalyzeArgs;
+
+use ppcalc_metric::{DestinationId, MessageId, SourceId, Trace};
 
 pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
     let network_trace = TraceBuilder::from_csv(&args.input)
@@ -45,6 +51,16 @@ pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
     //     serde_json::to_string_pretty(&deanomization_vec).unwrap(),
     // )
     // .unwrap();
+
+    if let Some(path) = args.generate_testcase {
+        ppcalc_metric::simple_example_generator(
+            args.min_window as i64,
+            args.max_window as i64,
+            &network_trace,
+            source_relationship_anonymity_sets,
+            path.into(),
+        )
+    }
 
     Ok(())
 }
