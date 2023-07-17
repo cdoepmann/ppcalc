@@ -111,7 +111,9 @@ impl TraceBuilder {
             v
         };
         for (i, s) in sources.iter().enumerate() {
-            assert_eq!(i as u64, s.to_num());
+            if i as u64 != s.to_num() {
+                return Err(TraceBuildError::SourceIdsHaveGaps(*s));
+            }
         }
 
         let (source_mapping, destination_mapping) = self.source_and_destination_mappings();
@@ -219,6 +221,8 @@ pub enum TraceBuildError {
     MessageIdsHaveGaps(MessageId),
     #[error("Message ID used multiple times: {0}")]
     MessageIdsNotUnique(MessageId),
+    #[error("Source IDs have gaps, but need to be sequential. Observed at source {0}.")]
+    SourceIdsHaveGaps(SourceId),
 }
 
 pub struct DestinationMapping {

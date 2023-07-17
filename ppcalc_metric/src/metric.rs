@@ -402,7 +402,7 @@ mod tests {
         let trace_path = String::from(path) + "/network_trace.csv";
         let sras_path = String::from(path) + "/sras.json";
         let network_trace = TraceBuilder::from_csv(trace_path).unwrap().build().unwrap();
-        let expected_sras = read_sras(&sras_path).unwrap();
+        let mut expected_sras = read_sras(&sras_path).unwrap();
         let (sras, _) =
             compute_relationship_anonymity(&network_trace, min_delay, max_delay).unwrap();
         let mut n_sras = HashMap::default();
@@ -411,6 +411,14 @@ mod tests {
                 n_sras.insert(m_id, d_ids);
             }
         }
+
+        // sort destination candidate vectors to make them comparable
+        for map in [&mut n_sras, &mut expected_sras] {
+            for dests in map.values_mut() {
+                dests.sort();
+            }
+        }
+
         assert!(n_sras == expected_sras);
     }
     #[test]
