@@ -13,6 +13,7 @@ num-traits = "0.2.15"
 rand = "0.8.5"
 rand_distr = "0.4.3"
 rayon = "1.7.0"
+fxhash = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.96"
 statrs = "0.16.0"

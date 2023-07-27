@@ -36,6 +36,9 @@ pub struct AnalyzeArgs {
 
     /// Output the analysis data as a testcase
     pub generate_testcase: Option<String>,
+    /// Output the analysis data as a testcase
+    #[arg(long)]
+    pub output_data: Option<String>,
 }
 
 #[derive(Args, Debug)]

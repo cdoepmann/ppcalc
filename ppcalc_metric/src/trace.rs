@@ -230,7 +230,7 @@ pub struct DestinationMapping {
 }
 
 impl DestinationMapping {
-    pub(crate) fn get(&self, msg: &MessageId) -> Option<&DestinationId> {
+    pub fn get(&self, msg: &MessageId) -> Option<&DestinationId> {
         self.data.get(msg.to_num() as usize)
     }
 
