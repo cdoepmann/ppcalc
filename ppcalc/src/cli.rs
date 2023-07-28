@@ -53,7 +53,7 @@ pub struct GenerateArgs {
     /// Reuse the sources from the specified trace file
     #[arg(long, value_name = "TRACE_FILE")]
     pub reuse_sources: Option<PathBuf>,
-    #[arg(long, value_name = "normal|uniform|roundrobin|smallworld", value_parser = parse_destination_selection_type)]
+    #[arg(long, value_name = "uniform|roundrobin|normal", value_parser = parse_destination_selection_type)]
     pub destination_selection_type: DestinationSelectionType,
     #[arg(long)]
     pub source_imd_mean: f64,
@@ -88,7 +88,6 @@ fn parse_destination_selection_type(s: &str) -> Result<DestinationSelectionType,
         "normal" => Ok(DestinationSelectionType::Normal),
         "uniform" => Ok(DestinationSelectionType::Uniform),
         "roundrobin" => Ok(DestinationSelectionType::RoundRobin),
-        "smallworld" => Ok(DestinationSelectionType::SmallWorld),
         _ => Err(format!("Invalid destination selection type \"{}\".", s)),
     }
 }

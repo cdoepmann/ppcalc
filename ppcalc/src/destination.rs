@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use rand::{distributions::Uniform, prelude::Distribution};
 use serde::{Deserialize, Serialize};
-use statrs::distribution::Normal;
 
 use ppcalc_metric::{DestinationId, SourceId};
 
@@ -10,7 +9,6 @@ use ppcalc_metric::{DestinationId, SourceId};
 pub enum DestinationSelectionType {
     Uniform,
     RoundRobin,
-    SmallWorld,
     Normal,
 }
 
@@ -25,9 +23,6 @@ pub fn destination_selection(
         }
         DestinationSelectionType::RoundRobin => {
             round_robin_destination_selection(number_of_destinations, source_id_list)
-        }
-        DestinationSelectionType::SmallWorld => {
-            small_world_destination_selection(number_of_destinations, source_id_list)
         }
         DestinationSelectionType::Normal => {
             normal_destination_selection(number_of_destinations, source_id_list)
@@ -63,24 +58,9 @@ pub fn round_robin_destination_selection(
 }
 
 // TODO
-pub fn small_world_destination_selection(
-    number_of_destinations: u64,
-    source_id_list: Vec<SourceId>,
-) -> HashMap<SourceId, DestinationId> {
-    /* TODO */
-    panic!("Small world destination selection is not implemented yet");
-}
-
-// TODO
 pub fn normal_destination_selection(
-    number_of_destinations: u64,
-    source_id_list: Vec<SourceId>,
+    _number_of_destinations: u64,
+    _source_id_list: Vec<SourceId>,
 ) -> HashMap<SourceId, DestinationId> {
-    let mut map = HashMap::new();
-    let distr = Normal::new(100.0, 10.0).unwrap();
-    let mut rng = rand::thread_rng();
-    for source_id in source_id_list {
-        map.insert(source_id, DestinationId::new(distr.sample(&mut rng) as u64));
-    }
-    map
+    unimplemented!("Choosing destinations based on a normal distribution isn't implemented yet.")
 }
