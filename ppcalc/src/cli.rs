@@ -30,10 +30,6 @@ pub struct AnalyzeArgs {
     #[arg(long)]
     pub max_window: u64,
 
-    /// Input CSV trace file to analyze
-    #[arg(value_name = "TRACE_FILE")]
-    pub input: PathBuf,
-
     /// Output the analysis data as a testcase
     #[arg(long, value_name = "TESTCASE_FOLDER")]
     pub generate_testcase: Option<String>,
@@ -41,6 +37,15 @@ pub struct AnalyzeArgs {
     /// Output the times when (and if) users were de-anonymized
     #[arg(long, value_name = "OUTFILE_FILE")]
     pub output_user_anonsets: Option<PathBuf>,
+
+    /// Output JSON file containing the computed anonymity sets per source message.
+    /// If the file name ends in ".zst", it is compressed with zstandard.
+    #[arg(long, short, value_name = "OUT_FILE")]
+    pub output: Option<PathBuf>,
+
+    /// Input CSV trace file to analyze
+    #[arg(value_name = "TRACE_FILE")]
+    pub input: PathBuf,
 }
 
 #[derive(Args, Debug)]
