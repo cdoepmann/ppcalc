@@ -50,10 +50,9 @@ pub struct GenerateArgs {
     /// Number of destinations to send to
     #[arg(short = 'd', long = "destinations")]
     pub num_destinations: u64,
-    #[arg(long)]
-    pub reuse_sources: bool,
-    #[arg(long)]
-    pub experiment: String,
+    /// Reuse the sources from the specified trace file
+    #[arg(long, value_name = "TRACE_FILE")]
+    pub reuse_sources: Option<PathBuf>,
     #[arg(long, value_name = "normal|uniform|roundrobin|smallworld", value_parser = parse_destination_selection_type)]
     pub destination_selection_type: DestinationSelectionType,
     #[arg(long)]

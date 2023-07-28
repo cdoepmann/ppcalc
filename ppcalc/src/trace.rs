@@ -1,9 +1,9 @@
-use csv::WriterBuilder;
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::File, io::BufReader};
 use time::PrimitiveDateTime;
 
-use ppcalc_metric::{DestinationId, SourceId};
+use ppcalc_metric::{DestinationId, SourceId, TraceBuilder};
 
 #[derive(Serialize, Deserialize)]
 pub struct SourceTrace {
@@ -24,44 +24,29 @@ pub struct PreNetworkTraceEntry {
     pub destination_id: DestinationId,
 }
 
-// impl SourceTrace {
-//     pub fn write_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-//         let mut wtr = WriterBuilder::new().has_headers(false).from_path(path)?;
-//         wtr.serialize(self)?;
-//         Ok(())
-//     }
-// }
+/// Reconstruct sources and their behavior from a network trace file
+pub fn read_sources_from_trace(
+    path: impl AsRef<Path>,
+) -> Result<Vec<SourceTrace>, Box<dyn std::error::Error + Send + Sync>> {
+    let path = path.as_ref();
 
-pub fn write_sources(
-    path: &str,
-    traces: &Vec<SourceTrace>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let wtr = std::fs::File::create(path)?;
+    // load the trace
+    let trace = TraceBuilder::from_csv(path)?.build()?;
 
-    serde_json::to_writer(&wtr, traces)?;
-    Ok(())
-}
-pub fn read_source_trace_from_file(
-    path: &str,
-) -> Result<Vec<SourceTrace>, Box<dyn std::error::Error>> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
+    // create a SourceTrace per source
+    let mut result: Vec<SourceTrace> = (0..=trace.max_source_id().to_num())
+        .map(|source_id| SourceTrace {
+            source_id: SourceId::new(source_id),
+            timestamps: Vec::new(),
+        })
+        .collect();
 
-    // Read the JSON contents of the file as an instance of `User`.
-    let source_trace = serde_json::from_reader(reader)?;
-    Ok(source_trace)
-}
-
-pub fn write_source_destination_map(
-    map: &HashMap<SourceId, DestinationId>,
-    path: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut wtr = WriterBuilder::new().from_path(path)?;
-    for (key, value) in map.iter() {
-        wtr.serialize(SourceDestinationMapEntry {
-            source: *key,
-            destination: *value,
-        })?;
+    // Collect send times per source
+    for entry in trace.entries() {
+        result[entry.source_id.to_num() as usize]
+            .timestamps
+            .push(entry.source_timestamp);
     }
-    Ok(())
+
+    Ok(result)
 }
