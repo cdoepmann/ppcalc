@@ -284,7 +284,7 @@ pub fn write_source_anon_set(
 pub fn write_sras(
     map: &BTreeMap<MessageId, Vec<DestinationId>>,
     path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let wtr = std::fs::File::create(path)?;
     serde_json::to_writer_pretty(&wtr, map)?;
     Ok(())
@@ -351,14 +351,14 @@ pub fn read_parameters(path: &Path) -> Result<TestParameters, Box<dyn std::error
 pub fn write_parameters(
     params: TestParameters,
     path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let wtr = std::fs::File::create(path)?;
     serde_json::to_writer_pretty(&wtr, &params)?;
     Ok(())
 }
 
 fn append_to_path(p: PathBuf, s: &str) -> PathBuf {
-    let mut p = p.into_os_string();
+    let mut p = p;
     p.push(s);
     p.into()
 }
@@ -368,12 +368,11 @@ pub fn simple_example_generator(
     network_trace: &Trace,
     source_relationship_anonymity_set: HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
     path: PathBuf,
-) {
-    fs::create_dir_all(path.clone()).unwrap();
-    let net_trace_path = append_to_path(path.clone(), "./network_trace.csv");
-    let source_anon_set_path = append_to_path(path.clone(), "./source_anonymity_set.json");
-    let sras_path = append_to_path(path.clone(), "./sras.json");
-    network_trace.write_to_file(&net_trace_path);
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    fs::create_dir_all(path.clone())?;
+    let net_trace_path = append_to_path(path.clone(), "network_trace.csv");
+    let sras_path = append_to_path(path.clone(), "sras.json");
+    network_trace.write_to_file(&net_trace_path)?;
 
     let mut sras_map = BTreeMap::default();
     for (_s_id, sas) in source_relationship_anonymity_set {
@@ -381,14 +380,16 @@ pub fn simple_example_generator(
             sras_map.insert(m_id, d_ids);
         }
     }
-    write_sras(&sras_map, &sras_path);
+    write_sras(&sras_map, &sras_path)?;
 
-    let parameter_path = append_to_path(path.clone(), "./params.json");
+    let parameter_path = append_to_path(path.clone(), "params.json");
     let params = TestParameters {
         min_delay: min_delay,
         max_delay: max_delay,
     };
-    write_parameters(params, &parameter_path);
+    write_parameters(params, &parameter_path)?;
+
+    Ok(())
 }
 #[cfg(test)]
 mod tests {

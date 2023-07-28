@@ -37,6 +37,7 @@ pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
             source_relationship_anonymity_sets,
             path.into(),
         )
+        .map_err(|e| anyhow!(e))?;
     }
 
     Ok(())

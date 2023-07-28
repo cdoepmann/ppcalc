@@ -35,6 +35,7 @@ pub struct AnalyzeArgs {
     pub input: PathBuf,
 
     /// Output the analysis data as a testcase
+    #[arg(long, value_name = "TESTCASE_FOLDER")]
     pub generate_testcase: Option<String>,
 
     /// Output the times when (and if) users were de-anonymized
