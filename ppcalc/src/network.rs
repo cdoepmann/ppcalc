@@ -14,10 +14,11 @@ pub fn generate_network_delay(
     let mut m_id = 0;
     let distr = Uniform::from(min_delay..max_delay);
     let mut rng = rand::thread_rng();
-    let delay = distr.sample(&mut rng);
 
     let mut trace = TraceBuilder::new();
     for entry in pre_network_trace {
+        let delay = distr.sample(&mut rng);
+
         trace.add_entry(TraceEntry {
             m_id: MessageId::new(m_id),
             source_id: entry.source_id,
