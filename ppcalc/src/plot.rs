@@ -1,5 +1,5 @@
+use fxhash::FxHashMap as HashMap;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, hash::BuildHasherDefault, path::Path};
 
 use ppcalc_metric::{DestinationId, MessageId, SourceId, Trace};
 
@@ -13,17 +13,12 @@ pub struct DeanomizationEntry {
 }
 
 pub fn deanonymized_users_over_time(
-    source_relationship_anonymity_sets: &HashMap<
-        SourceId,
-        Vec<(MessageId, Vec<DestinationId>)>,
-        BuildHasherDefault<fxhash::FxHasher>,
-    >,
+    source_relationship_anonymity_sets: &HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
     net_trace: &Trace,
 ) -> Vec<DeanomizationEntry> {
     let mut deanonymization_vec: Vec<DeanomizationEntry> = vec![];
     for (source, messages) in source_relationship_anonymity_sets.iter() {
-        let mut remaining_anonymity_set;
-        let num_messages = messages.len();
+        let remaining_anonymity_set;
         let last_message = messages.last();
         let Some(last_message) = last_message else {
                 println!("skipped.");
@@ -42,7 +37,7 @@ pub fn deanonymized_users_over_time(
                 });
             } else {
                 let mut message_number = messages.len() as u64;
-                for (message_id, destinations) in messages.iter().rev() {
+                for (_message_id, destinations) in messages.iter().rev() {
                     if destinations.len() == 1 {
                         break;
                     }

@@ -1,6 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
 use std::fs;
-use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
 use ppcalc_metric::TraceBuilder;
@@ -8,8 +6,6 @@ use time::Duration;
 
 use crate::cli::AnalyzeArgs;
 use crate::plot::deanonymized_users_over_time;
-
-use ppcalc_metric::{DestinationId, MessageId, SourceId, Trace};
 
 pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
     let network_trace = TraceBuilder::from_csv(&args.input)
@@ -21,17 +17,16 @@ pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
             Duration::milliseconds(args.min_window as i64),
             Duration::milliseconds(args.max_window as i64),
         )
-        .unwrap();
+        .map_err(|e| anyhow!(e))?;
 
-    if let Some(path) = args.output_data {
+    if let Some(path) = args.output_user_anonsets {
         let deanomization_path = path;
         let deanomization_vec =
             deanonymized_users_over_time(&source_relationship_anonymity_sets, &network_trace);
-        std::fs::write(
+        fs::write(
             deanomization_path,
-            serde_json::to_string_pretty(&deanomization_vec).unwrap(),
-        )
-        .unwrap();
+            serde_json::to_string_pretty(&deanomization_vec)?,
+        )?;
     }
 
     if let Some(path) = args.generate_testcase {

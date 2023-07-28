@@ -1,11 +1,8 @@
-use std::path::PathBuf;
+use std::{env, fs, path::Path};
 
 use rand_distr::Distribution;
-use serde::{Deserialize, Serialize};
 use statrs::distribution::Normal;
-use std::{env, fs, path::Path};
 use ppcalc_metric::SourceId;
-use time::Duration;
 
 use crate::cli::GenerateArgs;
 use crate::trace::write_sources;
@@ -51,7 +48,7 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
     let mut job_id = String::from("JOB_ID");
     match env::var(job_id.clone()) {
         Ok(v) => job_id = v,
-        Err(e) => job_id = String::from("Buergergeld_is_real"),
+        Err(_) => job_id = String::from("Buergergeld_is_real"),
     }
 
     bench.measure("generating destinations", BENCH_ENABLED);

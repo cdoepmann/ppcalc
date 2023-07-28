@@ -47,7 +47,7 @@ pub fn compute_relationship_anonymity(
         HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
         HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>>,
     ),
-    Box<dyn std::error::Error>,
+    Box<dyn std::error::Error + Send + Sync>,
 > {
     let mut bench = bench::Bench::new();
     let BENCH_ENABLED = true;

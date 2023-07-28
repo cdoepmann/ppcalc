@@ -36,9 +36,10 @@ pub struct AnalyzeArgs {
 
     /// Output the analysis data as a testcase
     pub generate_testcase: Option<String>,
-    /// Output the analysis data as a testcase
-    #[arg(long)]
-    pub output_data: Option<String>,
+
+    /// Output the times when (and if) users were de-anonymized
+    #[arg(long, value_name = "OUTFILE_FILE")]
+    pub output_user_anonsets: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
