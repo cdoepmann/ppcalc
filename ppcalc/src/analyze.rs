@@ -72,18 +72,28 @@ pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
 }
 
 trait JsonAnonymitySet {
-    fn format_anonymity_set(anonymity_set: &Self) -> serde_json::Value;
+    fn format_anonymity_set(&self) -> serde_json::Value;
+
+    fn size(&self) -> usize;
 }
 
 impl JsonAnonymitySet for Vec<DestinationId> {
-    fn format_anonymity_set(anonymity_set: &Self) -> serde_json::Value {
-        json!(anonymity_set.iter().map(|x| x.to_num()).collect::<Vec<_>>())
+    fn format_anonymity_set(&self) -> serde_json::Value {
+        json!(self.iter().map(|x| x.to_num()).collect::<Vec<_>>())
+    }
+
+    fn size(&self) -> usize {
+        self.len()
     }
 }
 
 impl JsonAnonymitySet for usize {
-    fn format_anonymity_set(anonymity_set: &Self) -> serde_json::Value {
-        json!(anonymity_set)
+    fn format_anonymity_set(&self) -> serde_json::Value {
+        json!(self)
+    }
+
+    fn size(&self) -> usize {
+        *self
     }
 }
 
@@ -97,18 +107,34 @@ fn output_anonymity_sets<T: JsonAnonymitySet>(
     let sets_per_user: Map<String, Value> = anonymity_sets
         .iter()
         .map(|(k, v)| {
+            let msgs = Value::Array(
+                v.iter()
+                    .map(|(msgid, anonset)| {
+                        json!({
+                            "m": msgid,
+                            "as": anonset.format_anonymity_set()
+                        })
+                    })
+                    .collect(),
+            );
+
+            let last_anonset_size = v.last().map(|x| x.1.size());
+            let deanonymized_at = {
+                let index = v.partition_point(|(_msgid, anonset)| anonset.size() > 1);
+                if index >= v.len() {
+                    None
+                } else {
+                    Some(index)
+                }
+            };
+
             (
                 k.to_string(),
-                Value::Array(
-                    v.iter()
-                        .map(|(msgid, anonset)| {
-                            json!({
-                                "m": msgid,
-                                "as": T::format_anonymity_set(anonset)
-                            })
-                        })
-                        .collect(),
-                ),
+                json!({
+                    "last_anonset_size": last_anonset_size,
+                    "deanonymized_at_num": deanonymized_at,
+                    "msgs": msgs
+                }),
             )
         })
         .collect();
