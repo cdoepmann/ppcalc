@@ -38,10 +38,14 @@ pub struct AnalyzeArgs {
     #[arg(long, value_name = "OUTFILE_FILE")]
     pub output_user_anonsets: Option<PathBuf>,
 
-    /// Output JSON file containing the computed anonymity sets per source message.
+    /// Output JSON file containing the computed anonymity sets (or their sizes) per source message.
     /// If the file name ends in ".zst", it is compressed with zstandard.
     #[arg(long, short, value_name = "OUT_FILE")]
     pub output: Option<PathBuf>,
+
+    /// Output only the size of the anonymity sets. This option cannot be used when testcases are generated.
+    #[arg(long, default_value = "false", value_name = "OUT_FILE", conflicts_with_all = ["generate_testcase", "output_user_anonsets"])]
+    pub sizes_only: bool,
 
     /// Input CSV trace file to analyze
     #[arg(value_name = "TRACE_FILE")]
