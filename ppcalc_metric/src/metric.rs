@@ -70,6 +70,82 @@ pub fn compute_relationship_anonymity(
     ))
 }
 
+/// Helper object to merge the "condensed" anonymity sets of a source into a
+/// sequence of destination candidates (or the number thereof).
+struct AnonymitySetMerger {
+    // number of candidate messages per destination after the previous message
+    prev_destination_candidates: Option<HashMap<DestinationId, usize>>,
+}
+
+impl AnonymitySetMerger {
+    fn new() -> AnonymitySetMerger {
+        AnonymitySetMerger {
+            prev_destination_candidates: None,
+        }
+    }
+
+    fn next_anonymity_set(
+        &mut self,
+        source_message: MessageId,
+        destination_anon_sets: &HashMap<DestinationId, (usize, usize)>,
+    ) -> Vec<DestinationId> {
+        // Access the previous message's candidates
+        let prev_destination_candidates = match self.prev_destination_candidates {
+            Some(ref mut x) => x,
+            None => {
+                // For the very first  message of this source), pretent all its destinations
+                // were seen before (so we do not exclude them now), but there was no
+                // candidate messages left. This way, we will just use the first candidate
+                // set as-is.
+                self.prev_destination_candidates.insert(
+                    destination_anon_sets
+                        .keys()
+                        .cloned()
+                        .map(|dest| (dest, 0))
+                        .collect(),
+                )
+            }
+        };
+
+        // number of candidate messages per destination for this source message
+        let mut destination_candidates: HashMap<DestinationId, usize> = HashMap::default();
+
+        for (destination, (added, overlap)) in destination_anon_sets {
+            // calculate the number of candidate messages for this destination
+            let from_previous_message = match prev_destination_candidates.get(&destination) {
+                None => {
+                    // this destination wasn't a candidate previously, so we don't add it
+                    continue;
+                }
+                Some(previous_candidates) => previous_candidates,
+            };
+
+            let candidates = added + min(*from_previous_message, *overlap);
+
+            // For this destination to remain a candidate, it must have at least one message
+            if candidates == 0 {
+                // Do not keep/make this destination a candidate. This means that our source
+                // was sending more messages than the destination potentially received
+                // from this source.
+                continue;
+            }
+
+            // This destination is (still) a candidate for our source after this message.
+            // For the next source_message, reduce our candidate message count by one
+            // because we have "used" or "assigned" one of the messages
+            destination_candidates.insert(destination.clone(), candidates - 1);
+        }
+
+        // The destination anonymity set after this message is now ready.
+        let result = destination_candidates.keys().cloned().collect();
+
+        // remember the remaining number of message candidates for each destination
+        *prev_destination_candidates = destination_candidates;
+
+        result
+    }
+}
+
 pub fn compute_relation_ship_anonymity_sets(
     message_anonymity_sets: HashMap<
         SourceId,
@@ -82,64 +158,15 @@ pub fn compute_relation_ship_anonymity_sets(
             // size of the destination anonymity set after each message
             let mut anon_set_sizes = Vec::new();
 
-            // number of candidate messages per destination after the previous message
-            let mut prev_destination_candidates: HashMap<DestinationId, usize> = {
-                // For the very first  message of this source), pretent all its destinations
-                // were seen before (so we do not exclude them now), but there was no
-                // candidate messages left. This way, we will just use the first candidate
-                // set as-is.
-                if let Some((_first_message, first_destinations)) = messages.first() {
-                    first_destinations
-                        .keys()
-                        .cloned()
-                        .map(|dest| (dest, 0))
-                        .collect()
-                } else {
-                    HashMap::default()
-                }
-            };
+            let mut merger = AnonymitySetMerger::new();
 
             // go through all messages and check their potential destinations
             for (source_message, anonymity_set_sizes) in messages {
-                // number of candidate messages per destination for this source message
-                let mut destination_candidates: HashMap<DestinationId, usize> = HashMap::default();
+                // compute the anonymity set (destinations)
+                let anon_set = merger.next_anonymity_set(source_message, &anonymity_set_sizes);
 
-                for (destination, (added, overlap)) in anonymity_set_sizes {
-                    // calculate the number of candidate messages for this destination
-                    let from_previous_message = match prev_destination_candidates.get(&destination)
-                    {
-                        None => {
-                            // this destination wasn't a candidate previously, so we don't add it
-                            continue;
-                        }
-                        Some(previous_candidates) => previous_candidates,
-                    };
-
-                    let candidates = added + min(*from_previous_message, overlap);
-
-                    // For this destination to remain a candidate, it must have at least one message
-                    if candidates == 0 {
-                        // Do not keep/make this destination a candidate. This means that our source
-                        // was sending more messages than the destination potentially received
-                        // from this source.
-                        continue;
-                    }
-
-                    // This destination is (still) a candidate for our source after this message.
-                    // For the next source_message, reduce our candidate message count by one
-                    // because we have "used" or "assigned" one of the messages
-                    destination_candidates.insert(destination.clone(), candidates - 1);
-                }
-
-                // The destination anonymity set after this message is now ready.
-                // For now, we only output its size.
-                anon_set_sizes.push((
-                    source_message,
-                    destination_candidates.keys().cloned().collect(),
-                ));
-
-                // remember the remaining number of message candidates for each destination
-                prev_destination_candidates = destination_candidates;
+                // return it
+                anon_set_sizes.push((source_message, anon_set));
             }
 
             (source, anon_set_sizes)
