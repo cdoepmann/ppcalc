@@ -9,7 +9,10 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
     let mut bench = bench::Bench::new();
     let BENCH_ENABLED = true;
 
-    let message_num_distr = Normal::new(args.num_messages_mean, args.num_messages_dev)?;
+    let message_num_distr = args
+        .num_messages
+        .make_distr()
+        .map_err(|e| anyhow::anyhow!(e))?;
     let mut rng = rand::thread_rng();
 
     // traces = trace::read_source_trace_from_file(&source_path).unwrap();
@@ -26,9 +29,9 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
         for i in 0..args.num_sources {
             let source_id = SourceId::new(i);
             let mut source = source::Source::new(
-                message_num_distr.sample(&mut rng).ceil() as u64,
-                Normal::new(args.source_imd_mean, args.source_imd_dev)?,
-                Normal::new(args.source_wait_mean, args.source_wait_dev)?,
+                message_num_distr.sample(&mut rng),
+                args.source_imd.clone(),
+                args.source_wait.clone(),
             );
             source_traces.push(source.gen_source_trace(source_id));
         }
@@ -46,11 +49,7 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
 
     bench.measure("merge traces", BENCH_ENABLED);
     let pre_network_trace = network::merge_traces(source_traces, &source_destination_map);
-    let network_trace = network::generate_network_delay(
-        args.network_delay_min,
-        args.network_delay_max,
-        pre_network_trace,
-    );
+    let network_trace = network::generate_network_delay(&args.network_delay, pre_network_trace);
 
     bench.measure("write to file", BENCH_ENABLED);
     network_trace

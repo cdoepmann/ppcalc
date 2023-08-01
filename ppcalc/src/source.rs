@@ -4,17 +4,23 @@ use rand::prelude::*;
 use time::macros::datetime;
 use time::Duration;
 
+use crate::cli::ParsedDistribution;
+
 use ppcalc_metric::SourceId;
 
-pub struct Source<T: Distribution<f64>> {
+pub struct Source {
     number_of_messages: u64,
     rng: ThreadRng,
-    sending_distr: T,
-    start_distr: T,
+    sending_distr: ParsedDistribution<f64>,
+    start_distr: ParsedDistribution<f64>,
 }
 
-impl<T: Distribution<f64>> Source<T> {
-    pub fn new(number_of_messages: u64, distr: T, start_distr: T) -> Source<T> {
+impl Source {
+    pub fn new(
+        number_of_messages: u64,
+        distr: ParsedDistribution<f64>,
+        start_distr: ParsedDistribution<f64>,
+    ) -> Source {
         Source {
             number_of_messages,
             sending_distr: distr,
@@ -23,15 +29,15 @@ impl<T: Distribution<f64>> Source<T> {
         }
     }
     pub fn gen_source_trace(&mut self, source_id: SourceId) -> trace::SourceTrace {
+        let start_distr = self.start_distr.make_distr().unwrap();
+        let sending_distr = self.sending_distr.make_distr().unwrap();
+
         let mut timestamps = vec![];
         let mut time = datetime!(1970-01-01 0:00)
-            + time::Duration::milliseconds(
-                self.start_distr.sample(&mut self.rng).to_i64().unwrap(),
-            );
+            + time::Duration::milliseconds(start_distr.sample(&mut self.rng).to_i64().unwrap());
         for _ in 0..self.number_of_messages {
-            let offset: time::Duration = time::Duration::milliseconds(
-                self.sending_distr.sample(&mut self.rng).to_i64().unwrap(),
-            );
+            let offset: time::Duration =
+                time::Duration::milliseconds(sending_distr.sample(&mut self.rng).to_i64().unwrap());
             time = time.checked_add(Duration::from(offset)).unwrap();
             timestamps.push(time);
         }

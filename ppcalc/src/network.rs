@@ -1,18 +1,18 @@
 use crate::trace;
-use rand::{distributions::Uniform, prelude::Distribution};
 use std::collections::HashMap;
+
+use crate::cli::ParsedDistribution;
 
 use ppcalc_metric::{DestinationId, MessageId, SourceId, Trace, TraceBuilder, TraceEntry};
 
 // It is important that this is (to some extend) reproducable, so we can change/analyse the destination distribution!
 // Lets maybe only create the entries we need?
 pub fn generate_network_delay(
-    min_delay: i64,
-    max_delay: i64,
+    delay_distribution: &ParsedDistribution<u64>,
     pre_network_trace: Vec<trace::PreNetworkTraceEntry>,
 ) -> Trace {
     let mut m_id = 0;
-    let distr = Uniform::from(min_delay..max_delay);
+    let distr = delay_distribution.make_distr().unwrap();
     let mut rng = rand::thread_rng();
 
     let mut trace = TraceBuilder::new();
@@ -26,7 +26,9 @@ pub fn generate_network_delay(
             destination_id: entry.destination_id,
             destination_timestamp: entry
                 .source_timestamp
-                .checked_add(time::Duration::from(time::Duration::milliseconds(delay)))
+                .checked_add(time::Duration::from(time::Duration::milliseconds(
+                    delay as i64,
+                )))
                 .unwrap(),
         });
         m_id += 1;
