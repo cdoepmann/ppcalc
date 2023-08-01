@@ -52,15 +52,11 @@ pub fn compute_relationship_anonymity(
     let mut bench = bench::Bench::new();
     let BENCH_ENABLED = true;
 
-    bench.measure("source anonymity sets", BENCH_ENABLED);
-    let source_message_anonymity_sets =
-        compute_message_anonymity_sets(&trace, min_delay, max_delay);
-
-    bench.measure("source relationship anonymity sets", BENCH_ENABLED);
+    bench.measure("compute anonymity sets", BENCH_ENABLED);
     let source_relationship_anonymity_sets: HashMap<
         SourceId,
         Vec<(MessageId, Vec<DestinationId>)>,
-    > = compute_relation_ship_anonymity_sets(source_message_anonymity_sets);
+    > = compute_message_anonymity_sets(&trace, min_delay, max_delay);
 
     /* Be wary that this yields only useful results if there is just one source per destination */
     let destination_relationship_anonymity_sets = HashMap::default(); // TODO
@@ -146,41 +142,11 @@ impl AnonymitySetMerger {
     }
 }
 
-pub fn compute_relation_ship_anonymity_sets(
-    message_anonymity_sets: HashMap<
-        SourceId,
-        Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>,
-    >,
-) -> HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>> {
-    let relationship_anonymity_sets = message_anonymity_sets
-        .into_par_iter()
-        .map(|(source, messages)| {
-            // size of the destination anonymity set after each message
-            let mut anon_set_sizes = Vec::new();
-
-            let mut merger = AnonymitySetMerger::new();
-
-            // go through all messages and check their potential destinations
-            for (source_message, anonymity_set_sizes) in messages {
-                // compute the anonymity set (destinations)
-                let anon_set = merger.next_anonymity_set(source_message, &anonymity_set_sizes);
-
-                // return it
-                anon_set_sizes.push((source_message, anon_set));
-            }
-
-            (source, anon_set_sizes)
-        })
-        .collect();
-
-    relationship_anonymity_sets
-}
-
 pub fn compute_message_anonymity_sets(
     trace: &Trace,
     min_delay: Duration,
     max_delay: Duration,
-) -> HashMap<SourceId, Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>> {
+) -> HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>> {
     let destination_mapping = trace.get_destination_mapping();
 
     // split messages per source
@@ -212,86 +178,90 @@ pub fn compute_message_anonymity_sets(
         }
     });
 
-    let result: HashMap<SourceId, Vec<(MessageId, HashMap<DestinationId, (usize, usize)>)>> =
-        messages_per_source
-            .into_par_iter()
-            .enumerate()
-            .map(|(source, messages)| {
-                let source = SourceId::new(source as u64);
-                let entries = trace.entries_vec();
+    let result: HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>> = messages_per_source
+        .into_par_iter()
+        .enumerate()
+        .map(|(source, messages)| {
+            let source = SourceId::new(source as u64);
+            let entries = trace.entries_vec();
 
-                let mut source_result = Vec::new();
-                let mut last_msg_anonset: Option<HashMap<DestinationId, MessageSet>> = None;
+            let mut source_result = Vec::new();
+            let mut last_msg_anonset: Option<HashMap<DestinationId, MessageSet>> = None;
 
-                for message in messages {
-                    // Find the relevant destination messages.
-                    // This exploits the fact that the trace entries are sorted by
-                    // time of arrival at the destination, so we can carry out fast
-                    // range queries.
-                    let mut this_msg_anonset = MessageSet::new();
-                    let from_time = message.source_timestamp + min_delay;
-                    let to_time = message.source_timestamp + max_delay;
+            // helper struct to merge/intersect the anonymity sets over time
+            // (this was previously the "second phase")
+            let mut anonset_intersector = AnonymitySetMerger::new();
 
-                    // Find the first relevant index (whose timestamp is _not_ less
-                    // than from_time). We use partition_point(...) here instead of
-                    // binary_search(...), because the latter would give us only
-                    // _some_ matching entry, not necessarily the first one.
-                    let start_index =
-                        entries.partition_point(|e| e.destination_timestamp < from_time);
+            for message in messages {
+                // Find the relevant destination messages.
+                // This exploits the fact that the trace entries are sorted by
+                // time of arrival at the destination, so we can carry out fast
+                // range queries.
+                let mut this_msg_anonset = MessageSet::new();
+                let from_time = message.source_timestamp + min_delay;
+                let to_time = message.source_timestamp + max_delay;
 
-                    for dest_msg in &entries[start_index..] {
-                        if dest_msg.destination_timestamp > to_time {
-                            break;
-                        }
+                // Find the first relevant index (whose timestamp is _not_ less
+                // than from_time). We use partition_point(...) here instead of
+                // binary_search(...), because the latter would give us only
+                // _some_ matching entry, not necessarily the first one.
+                let start_index = entries.partition_point(|e| e.destination_timestamp < from_time);
 
-                        this_msg_anonset.insert(dest_msg.m_id);
+                for dest_msg in &entries[start_index..] {
+                    if dest_msg.destination_timestamp > to_time {
+                        break;
                     }
 
-                    let this_msg_anonset =
-                        split_by_destination(this_msg_anonset, destination_mapping);
-
-                    // compute the relative difference (per destination) of the new anonymity set,
-                    // from the anonymity set of the last message of that source
-                    let relative_difference: HashMap<DestinationId, (usize, usize)> =
-                        match last_msg_anonset {
-                            None => {
-                                // all messages are new
-                                this_msg_anonset
-                                    .iter()
-                                    .map(|(dest, messages)| (dest.clone(), (messages.len(), 0)))
-                                    .collect()
-                            }
-                            Some(previous) => {
-                                // compute the difference per destination.
-                                // Destinations that aren't present anymore are left out (would be (0,0) anyway).
-                                this_msg_anonset
-                                    .iter()
-                                    .map(|(dest, messages)| {
-                                        (
-                                            dest.clone(),
-                                            match previous.get(&dest) {
-                                                None => (messages.len(), 0),
-                                                Some(previous_messages) => relative_set_distance(
-                                                    previous_messages,
-                                                    messages,
-                                                ),
-                                            },
-                                        )
-                                    })
-                                    .collect()
-                            }
-                        };
-
-                    // save the aggregated anonymity set delta as the next result
-                    source_result.push((message.m_id, relative_difference));
-
-                    // remember the original (but split by destination) anonymity set for next iteration
-                    last_msg_anonset = Some(this_msg_anonset);
+                    this_msg_anonset.insert(dest_msg.m_id);
                 }
-                progress_s.send(true).unwrap();
-                (source, source_result)
-            })
-            .collect();
+
+                let this_msg_anonset = split_by_destination(this_msg_anonset, destination_mapping);
+
+                // compute the relative difference (per destination) of the new anonymity set,
+                // from the anonymity set of the last message of that source
+                let relative_difference: HashMap<DestinationId, (usize, usize)> =
+                    match last_msg_anonset {
+                        None => {
+                            // all messages are new
+                            this_msg_anonset
+                                .iter()
+                                .map(|(dest, messages)| (dest.clone(), (messages.len(), 0)))
+                                .collect()
+                        }
+                        Some(previous) => {
+                            // compute the difference per destination.
+                            // Destinations that aren't present anymore are left out (would be (0,0) anyway).
+                            this_msg_anonset
+                                .iter()
+                                .map(|(dest, messages)| {
+                                    (
+                                        dest.clone(),
+                                        match previous.get(&dest) {
+                                            None => (messages.len(), 0),
+                                            Some(previous_messages) => {
+                                                relative_set_distance(previous_messages, messages)
+                                            }
+                                        },
+                                    )
+                                })
+                                .collect()
+                        }
+                    };
+
+                // use the aggregated anonymity set delta for computing the next anonymity set (possible destinations)
+                let anonymity_set =
+                    anonset_intersector.next_anonymity_set(message.m_id, &relative_difference);
+
+                // save it as the next result
+                source_result.push((message.m_id, anonymity_set));
+
+                // remember the original (but split by destination) anonymity set for next iteration
+                last_msg_anonset = Some(this_msg_anonset);
+            }
+            progress_s.send(true).unwrap();
+            (source, source_result)
+        })
+        .collect();
 
     progress_s.send(false).unwrap();
     thread_handle.join().unwrap();
