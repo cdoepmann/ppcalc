@@ -9,7 +9,7 @@ use serde_json::json;
 use time::Duration;
 use zstd;
 
-use ppcalc_metric::{DestinationId, MessageId, SourceId, TraceBuilder};
+use ppcalc_metric::{DestinationId, MessageId, SourceId, Trace, TraceBuilder};
 
 use crate::cli::AnalyzeArgs;
 use crate::plot::deanonymized_users_over_time;
@@ -40,7 +40,7 @@ pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
         }
 
         if let Some(path) = args.output {
-            output_anonymity_sets(path, &source_relationship_anonymity_sets)?;
+            output_anonymity_sets(path, &source_relationship_anonymity_sets, &network_trace)?;
         }
 
         if let Some(path) = args.generate_testcase {
@@ -64,7 +64,7 @@ pub fn run(args: AnalyzeArgs) -> anyhow::Result<()> {
             .map_err(|e| anyhow!(e))?;
 
         if let Some(path) = args.output {
-            output_anonymity_sets(path, &source_relationship_anonymity_sets)?;
+            output_anonymity_sets(path, &source_relationship_anonymity_sets, &network_trace)?;
         }
     }
 
@@ -100,6 +100,7 @@ impl JsonAnonymitySet for usize {
 fn output_anonymity_sets<T: JsonAnonymitySet>(
     path: impl AsRef<Path>,
     anonymity_sets: &HashMap<SourceId, Vec<(MessageId, T)>>,
+    trace: &Trace,
 ) -> anyhow::Result<()> {
     use serde_json::{Map, Value};
     let path = path.as_ref();
@@ -119,7 +120,7 @@ fn output_anonymity_sets<T: JsonAnonymitySet>(
             );
 
             let last_anonset_size = v.last().map(|x| x.1.size());
-            let deanonymized_at = {
+            let deanonymized_at_index = {
                 let index = v.partition_point(|(_msgid, anonset)| anonset.size() > 1);
                 if index >= v.len() {
                     None
@@ -127,12 +128,19 @@ fn output_anonymity_sets<T: JsonAnonymitySet>(
                     Some(index)
                 }
             };
+            let time_to_deanonymization = deanonymized_at_index
+                .map(|deanon_index| {
+                    trace.message_sent(&v[deanon_index].0).unwrap()
+                        - trace.message_sent(&v[0].0).unwrap()
+                })
+                .map(|duration| duration.as_seconds_f32());
 
             (
                 k.to_string(),
                 json!({
                     "last_anonset_size": last_anonset_size,
-                    "deanonymized_at_num": deanonymized_at,
+                    "deanonymized_at_num": deanonymized_at_index,
+                    "time_to_deanon": time_to_deanonymization,
                     "msgs": msgs
                 }),
             )

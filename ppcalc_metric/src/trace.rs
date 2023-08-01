@@ -205,6 +205,14 @@ impl Trace {
         self.max_sourceid
     }
 
+    /// Get the "sent" timestamp of a message, if the provided message ID is present in the trace.
+    pub fn message_sent(&self, message_id: &MessageId) -> Option<PrimitiveDateTime> {
+        // message IDs are equivalent to the index in the entries Vec
+        self.entries
+            .get(message_id.to_num() as usize)
+            .map(|entry| entry.source_timestamp)
+    }
+
     pub fn entries_vec(&self) -> &Vec<TraceEntry> {
         &self.entries
     }
