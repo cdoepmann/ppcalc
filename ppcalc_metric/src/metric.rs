@@ -49,14 +49,40 @@ pub fn compute_relationship_anonymity(
     ),
     Box<dyn std::error::Error + Send + Sync>,
 > {
+    compute_relationship_anonymity_inner::<OutputFull>(trace, min_delay, max_delay)
+}
+
+pub fn compute_relationship_anonymity_sizes(
+    trace: &Trace,
+    min_delay: Duration,
+    max_delay: Duration,
+) -> Result<
+    (
+        HashMap<SourceId, Vec<(MessageId, usize)>>,
+        HashMap<SourceId, Vec<(MessageId, usize)>>,
+    ),
+    Box<dyn std::error::Error + Send + Sync>,
+> {
+    compute_relationship_anonymity_inner::<OutputSizes>(trace, min_delay, max_delay)
+}
+
+fn compute_relationship_anonymity_inner<T: OutputMapper>(
+    trace: &Trace,
+    min_delay: Duration,
+    max_delay: Duration,
+) -> Result<
+    (
+        HashMap<SourceId, Vec<(MessageId, T::Item)>>,
+        HashMap<SourceId, Vec<(MessageId, T::Item)>>,
+    ),
+    Box<dyn std::error::Error + Send + Sync>,
+> {
     let mut bench = bench::Bench::new();
     let BENCH_ENABLED = true;
 
     bench.measure("compute anonymity sets", BENCH_ENABLED);
-    let source_relationship_anonymity_sets: HashMap<
-        SourceId,
-        Vec<(MessageId, Vec<DestinationId>)>,
-    > = compute_message_anonymity_sets(&trace, min_delay, max_delay);
+    let source_relationship_anonymity_sets =
+        compute_message_anonymity_sets::<T>(&trace, min_delay, max_delay);
 
     /* Be wary that this yields only useful results if there is just one source per destination */
     let destination_relationship_anonymity_sets = HashMap::default(); // TODO
@@ -142,11 +168,41 @@ impl AnonymitySetMerger {
     }
 }
 
-pub fn compute_message_anonymity_sets(
+/// A filter to replace the returned anonymity set by something else
+trait OutputMapper {
+    type Item: Send;
+
+    fn map(anonymity_set: Vec<DestinationId>) -> Self::Item;
+}
+
+/// Output the full anonymity sets
+struct OutputFull;
+
+impl OutputMapper for OutputFull {
+    type Item = Vec<DestinationId>;
+
+    fn map(anonymity_set: Vec<DestinationId>) -> Self::Item {
+        // change nothing
+        anonymity_set
+    }
+}
+
+/// Output only the anonymity set sizes
+struct OutputSizes;
+
+impl OutputMapper for OutputSizes {
+    type Item = usize;
+
+    fn map(anonymity_set: Vec<DestinationId>) -> Self::Item {
+        anonymity_set.len()
+    }
+}
+
+fn compute_message_anonymity_sets<T: OutputMapper>(
     trace: &Trace,
     min_delay: Duration,
     max_delay: Duration,
-) -> HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>> {
+) -> HashMap<SourceId, Vec<(MessageId, T::Item)>> {
     let destination_mapping = trace.get_destination_mapping();
 
     // split messages per source
@@ -178,7 +234,7 @@ pub fn compute_message_anonymity_sets(
         }
     });
 
-    let result: HashMap<SourceId, Vec<(MessageId, Vec<DestinationId>)>> = messages_per_source
+    let result: HashMap<SourceId, Vec<(MessageId, T::Item)>> = messages_per_source
         .into_par_iter()
         .enumerate()
         .map(|(source, messages)| {
@@ -251,6 +307,9 @@ pub fn compute_message_anonymity_sets(
                 // use the aggregated anonymity set delta for computing the next anonymity set (possible destinations)
                 let anonymity_set =
                     anonset_intersector.next_anonymity_set(message.m_id, &relative_difference);
+
+                // map the anonymity set to what we want to output
+                let anonymity_set = T::map(anonymity_set);
 
                 // save it as the next result
                 source_result.push((message.m_id, anonymity_set));
