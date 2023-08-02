@@ -63,7 +63,8 @@ Currently, the following forms are accepted:
 
 - <bold>constant:VALUE</bold> (use VALUE for all samples)
 - <bold>uniform:MIN:MAX</bold> (choose samples uniformly at random between MIN and MAX, inclusive)
-- <bold>normal:MEAN:dev</bold> (draw samples from a normal distribution with mean value MEAN and standard deviation DEV)
+- <bold>normal:MEAN:DEV</bold> (draw samples from a normal distribution with mean value MEAN and standard deviation DEV)
+- <bold>normal:MEAN:DEV:MIN:MAX</bold> (draw samples from a normal distribution as before, but capped to the range [MIN..MAX], inclusive)
 "))]
 pub struct GenerateArgs {
     /// Number of sources to send from
@@ -172,13 +173,22 @@ impl<T: Clone> Distribution<T> for Constant<T> {
 #[derive(Clone)]
 pub struct NormalAllowingIntegers<T: SampledValue> {
     float_distribution: Normal<f64>,
+    min: Option<f64>,
+    max: Option<f64>,
     phantom: PhantomData<T>,
 }
 
 impl<T: SampledValue> NormalAllowingIntegers<T> {
-    fn new(mean: f64, dev: f64) -> Result<Self, rand_distr::NormalError> {
+    fn new(
+        mean: f64,
+        dev: f64,
+        min: Option<f64>,
+        max: Option<f64>,
+    ) -> Result<Self, rand_distr::NormalError> {
         Ok(NormalAllowingIntegers {
             float_distribution: Normal::new(mean, dev)?,
+            min,
+            max,
             phantom: PhantomData,
         })
     }
@@ -186,10 +196,25 @@ impl<T: SampledValue> NormalAllowingIntegers<T> {
 
 impl<T: SampledValue> Distribution<T> for NormalAllowingIntegers<T> {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> T {
-        T::from_f64(rand_distr::Distribution::sample(
-            &self.float_distribution,
-            rng,
-        ))
+        let value: f64 = loop {
+            let x = rand_distr::Distribution::sample(&self.float_distribution, rng);
+
+            if let Some(min) = self.min {
+                if x < min {
+                    continue;
+                }
+            }
+
+            if let Some(max) = self.max {
+                if x > max {
+                    continue;
+                }
+            }
+
+            break x;
+        };
+
+        T::from_f64(value)
     }
 }
 
@@ -224,7 +249,8 @@ fn parse_distribution<T: SampledValue>(s: &str) -> Result<ParsedDistribution<T>,
         "Invalid distribution. Specify it using one of the following forms:
     constant:VALUE
     uniform:MIN:MAX
-    normal:mean:dev"
+    normal:MEAN:DEV
+    normal:MEAN:DEV:MIN:MAX"
             .to_string()
     };
 
@@ -243,7 +269,29 @@ fn parse_distribution<T: SampledValue>(s: &str) -> Result<ParsedDistribution<T>,
         ["normal", mean, dev] => {
             let mean = mean.parse::<f64>().map_err(|_| err())?;
             let dev = dev.parse::<f64>().map_err(|_| err())?;
-            Ok(ParsedDistribution::Normal { mean, dev })
+            Ok(ParsedDistribution::Normal {
+                mean,
+                dev,
+                min: None,
+                max: None,
+            })
+        }
+        ["normal", mean, dev, min, max] => {
+            let mean = mean.parse::<f64>().map_err(|_| err())?;
+            let dev = dev.parse::<f64>().map_err(|_| err())?;
+            let min = min.parse::<f64>().map_err(|_| err())?;
+            let max = max.parse::<f64>().map_err(|_| err())?;
+
+            if !(min < mean && mean < max) {
+                return Err("The parameters to the capped normal distribution do not satisfy MIN < MEAN < MAX.".to_string());
+            }
+
+            Ok(ParsedDistribution::Normal {
+                mean,
+                dev,
+                min: Some(min),
+                max: Some(max),
+            })
         }
         _ => return Err(err()),
     }
@@ -252,9 +300,19 @@ fn parse_distribution<T: SampledValue>(s: &str) -> Result<ParsedDistribution<T>,
 /// A set of parsed parameters for a probability distribution
 #[derive(Debug, Clone)]
 pub enum ParsedDistribution<T: SampledValue + 'static> {
-    Constant { value: T },
-    Uniform { min: T, max: T },
-    Normal { mean: f64, dev: f64 },
+    Constant {
+        value: T,
+    },
+    Uniform {
+        min: T,
+        max: T,
+    },
+    Normal {
+        mean: f64,
+        dev: f64,
+        min: Option<f64>,
+        max: Option<f64>,
+    },
 }
 
 impl<T: SampledValue + Copy + 'static> ParsedDistribution<T> {
@@ -264,8 +322,13 @@ impl<T: SampledValue + Copy + 'static> ParsedDistribution<T> {
         match self {
             Self::Constant { value } => Ok(Box::new(Constant::new(*value))),
             Self::Uniform { min, max } => Ok(Box::new(Uniform::new_inclusive(*min, *max))),
-            Self::Normal { mean, dev } => Ok(Box::new(
-                NormalAllowingIntegers::new(*mean, *dev)
+            Self::Normal {
+                mean,
+                dev,
+                min,
+                max,
+            } => Ok(Box::new(
+                NormalAllowingIntegers::new(*mean, *dev, *min, *max)
                     .map_err(|e| format!("Error building normal distribution: {}", e))?,
             )),
         }
