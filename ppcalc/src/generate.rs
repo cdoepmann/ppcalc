@@ -1,5 +1,3 @@
-use rand_distr::Distribution;
-use statrs::distribution::Normal;
 use ppcalc_metric::SourceId;
 
 use crate::cli::GenerateArgs;

@@ -1,10 +1,5 @@
 use crate::trace;
-use num_traits::cast::ToPrimitive;
-use rand::prelude::*;
 use time::macros::datetime;
-use time::Duration;
-
-use crate::cli::ParsedDistribution;
 
 use ppcalc_metric::SourceId;
 
