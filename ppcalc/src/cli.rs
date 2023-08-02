@@ -57,6 +57,14 @@ pub struct AnalyzeArgs {
 }
 
 #[derive(Args, Debug)]
+#[clap(after_help = color_print::cstr!("<bold><underline>DISTRIBUTION values:</underline></bold>
+Some parameters require a probability distribution to be specified.
+Currently, the following forms are accepted:
+
+- <bold>constant:VALUE</bold> (use VALUE for all samples)
+- <bold>uniform:MIN:MAX</bold> (choose samples uniformly at random between MIN and MAX, inclusive)
+- <bold>normal:MEAN:dev</bold> (draw samples from a normal distribution with mean value MEAN and standard deviation DEV)
+"))]
 pub struct GenerateArgs {
     /// Number of sources to send from
     #[arg(short = 's', long = "sources")]
@@ -72,19 +80,23 @@ pub struct GenerateArgs {
 
     /// Assignment strategy for connecting sources to destinations
     #[arg(long, value_name = "uniform|roundrobin|normal", value_parser = parse_destination_selection_type)]
-    pub destination_selection_type: DestinationSelectionType,
+    pub destination_selection: DestinationSelectionType,
 
-    /// Probability distribution for the inter-message delay
+    /// Probability distribution for the bandwidth per user [Mbit/s]
     #[arg(long, value_name = "DISTRIBUTION", value_parser = parse_distribution::<f64>)]
-    pub source_imd: ParsedDistribution<f64>,
+    pub bandwidth: ParsedDistribution<f64>,
 
-    /// Probability distribution for the time the source waits before sending
+    /// Probability distribution for the length of a transfer [B]
+    #[arg(long, value_name = "DISTRIBUTION", value_parser = parse_distribution::<u64>)]
+    pub stream_length: ParsedDistribution<u64>,
+
+    /// Size of each message [B]
+    #[arg(long, value_name = "BYTES", default_value = "514")]
+    pub message_size: u64,
+
+    /// Probability distribution for the time the source waits before sending [ms]
     #[arg(long, value_name = "DISTRIBUTION", value_parser = parse_distribution::<f64>)]
     pub source_wait: ParsedDistribution<f64>,
-
-    /// Probability distribution for the number of messages per user
-    #[arg(long, value_name = "DISTRIBUTION", value_parser = parse_distribution::<u64>)]
-    pub num_messages: ParsedDistribution<u64>,
 
     /// Probability distribution for the network delay [ms]
     #[arg(long, value_name = "DISTRIBUTION", value_parser = parse_distribution::<u64>)]

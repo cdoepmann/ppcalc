@@ -9,10 +9,19 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
     let mut bench = bench::Bench::new();
     let BENCH_ENABLED = true;
 
-    let message_num_distr = args
-        .num_messages
+    let stream_length_distr = args
+        .stream_length
         .make_distr()
         .map_err(|e| anyhow::anyhow!(e))?;
+    let bandwidth_distr = args
+        .bandwidth
+        .make_distr()
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let source_wait_distr = args
+        .source_wait
+        .make_distr()
+        .map_err(|e| anyhow::anyhow!(e))?;
+
     let mut rng = rand::thread_rng();
 
     // traces = trace::read_source_trace_from_file(&source_path).unwrap();
@@ -28,10 +37,20 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
         let mut source_traces = vec![];
         for i in 0..args.num_sources {
             let source_id = SourceId::new(i);
+
+            let length = stream_length_distr.sample(&mut rng);
+            let bandwidth = bandwidth_distr.sample(&mut rng); // Mbit/s
+            let bandwidth = (bandwidth * 1024.0 * 1024.0) / (8.0 * 1000.0 * 1000.0); // B/µs
+
+            let num_messages = (length + args.message_size - 1) / args.message_size; // ceiling division
+            let imd = args.message_size as f64 / bandwidth; // µs
+
             let mut source = source::Source::new(
-                message_num_distr.sample(&mut rng),
-                args.source_imd.clone(),
-                args.source_wait.clone(),
+                num_messages,
+                time::Duration::microseconds(imd as i64),
+                time::Duration::microseconds(
+                    ((source_wait_distr.sample(&mut rng) * 1000.0) as u64) as i64,
+                ),
             );
             source_traces.push(source.gen_source_trace(source_id));
         }
@@ -42,7 +61,7 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
     bench.measure("generating source-destination map ", BENCH_ENABLED);
     let source_name_list = source_traces.iter().map(|x| x.source_id.clone()).collect();
     let source_destination_map = destination::destination_selection(
-        &args.destination_selection_type,
+        &args.destination_selection,
         args.num_destinations,
         source_name_list,
     );

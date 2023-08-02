@@ -10,35 +10,27 @@ use ppcalc_metric::SourceId;
 
 pub struct Source {
     number_of_messages: u64,
-    rng: ThreadRng,
-    sending_distr: ParsedDistribution<f64>,
-    start_distr: ParsedDistribution<f64>,
+    inter_message_delay: time::Duration,
+    start_offset: time::Duration,
 }
 
 impl Source {
     pub fn new(
         number_of_messages: u64,
-        distr: ParsedDistribution<f64>,
-        start_distr: ParsedDistribution<f64>,
+        inter_message_delay: time::Duration,
+        start_offset: time::Duration,
     ) -> Source {
         Source {
             number_of_messages,
-            sending_distr: distr,
-            start_distr: start_distr,
-            rng: rand::thread_rng(),
+            inter_message_delay,
+            start_offset,
         }
     }
     pub fn gen_source_trace(&mut self, source_id: SourceId) -> trace::SourceTrace {
-        let start_distr = self.start_distr.make_distr().unwrap();
-        let sending_distr = self.sending_distr.make_distr().unwrap();
-
         let mut timestamps = vec![];
-        let mut time = datetime!(1970-01-01 0:00)
-            + time::Duration::milliseconds(start_distr.sample(&mut self.rng).to_i64().unwrap());
+        let mut time = datetime!(1970-01-01 0:00) + self.start_offset;
         for _ in 0..self.number_of_messages {
-            let offset: time::Duration =
-                time::Duration::milliseconds(sending_distr.sample(&mut self.rng).to_i64().unwrap());
-            time = time.checked_add(Duration::from(offset)).unwrap();
+            time = time.checked_add(self.inter_message_delay).unwrap();
             timestamps.push(time);
         }
         trace::SourceTrace {
